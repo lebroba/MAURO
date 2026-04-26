@@ -1,0 +1,3 @@
+-- MAURO seed data.
+-- Real seeds land here once the event-sourcing schema is defined.
+-- See docs/ARCHITECTURE_PRINCIPLES.md §3 for the time-versioned model.

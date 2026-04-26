@@ -1,0 +1,19 @@
+{
+  "name": "@mauro/llm",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "echo \"(lint stub)\" && exit 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "22.7.5",
+    "typescript": "5.6.2",
+    "vitest": "2.1.2"
+  }
+}
