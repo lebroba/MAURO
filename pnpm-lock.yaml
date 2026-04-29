@@ -125,6 +125,19 @@ importers:
         version: 2.1.2(@types/node@22.7.5)
 
   packages/sim:
+    dependencies:
+      '@supabase/ssr':
+        specifier: 0.10.2
+        version: 0.10.2(@supabase/supabase-js@2.105.1)
+      '@supabase/supabase-js':
+        specifier: 2.105.1
+        version: 2.105.1
+      server-only:
+        specifier: 0.0.1
+        version: 0.0.1
+      sharp:
+        specifier: 0.33.5
+        version: 0.33.5
     devDependencies:
       '@types/node':
         specifier: 22.7.5
