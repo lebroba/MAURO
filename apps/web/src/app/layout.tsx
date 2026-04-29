@@ -45,7 +45,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-theme="dark" className={fontVars}>
-      <body>{children}</body>
+      {/* suppressHydrationWarning — browser extensions (Grammarly, Titans Quick
+          View, color pickers, etc.) commonly inject data-* attrs on <body>
+          after page load. Without this, React warns on every page. The
+          suppression is scoped to <body> only; child components still get
+          full hydration validation. */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   )
 }
