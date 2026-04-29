@@ -54,3 +54,21 @@ Worldbuilding workspace for TTRPG GMs (5E primary, MVP) and worldbuilding noveli
 - No "modernizing" the exact-pin policy without explicit discussion.
 - No introducing dependencies that aren't on the manifest's pin list without justification.
 - No new top-level docs without checking whether an existing one is the right home.
+
+## Design System
+
+**Always read `DESIGN.md` before making any visual or UI decisions.** All font choices, colors, spacing, layout, and aesthetic direction are defined there. Do not deviate without explicit user approval.
+
+Aesthetic direction is **Cartographic Intelligence** — paper as substrate, not parchment as costume. Two serifs (Fraunces + Source Serif 4), one grotesque (Inter Tight), one mono (JetBrains Mono). Warm-paper neutrals + two restrained accents (stamp red `#B8442C`, verdigris `#3B6B5A`). Border-radius is 2px max except for circular scrubber pins.
+
+**Forbidden patterns** that AI-assisted UI work tends to default to and that MAURO explicitly rejects:
+- Purple/violet gradients
+- 3-column icon-in-circle feature grids
+- Glassmorphism, frosted backgrounds, or any background blur
+- `border-radius` above 2px on rectangles (buttons, cards, inputs, panels)
+- `Inter` (regular, not Inter Tight) as a primary font
+- Centered hero sections with three-feature card grids
+- "Built for ___" or "AI-powered ___" marketing copy
+- Emoji icons in UI (✨, 🚀, 🎯, etc.) — no exceptions in app surfaces
+
+In `/qa` mode, flag any code that doesn't match `DESIGN.md`.
