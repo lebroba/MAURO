@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { createSupabaseServiceClient } from '@/lib/supabase-service'
 
 // POST /auth/request-magic-link
@@ -59,15 +59,17 @@ export async function POST(request: Request) {
     return NextResponse.json(GENERIC_OK_BODY)
   }
 
-  // Allowlisted — trigger the magic link via a no-cookie anon client.
-  // signInWithOtp is stateless from the caller's perspective; cookies aren't
-  // relevant until the user clicks the link and hits /auth/callback.
-  const anon = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  // Allowlisted — trigger the magic link.
+  //
+  // CRITICAL: must use the SSR server client (not bare @supabase/supabase-js).
+  // The SSR client defaults to PKCE flow, which stores a code verifier in
+  // cookies that the /auth/callback route reads back to complete the exchange.
+  // The bare client defaults to IMPLICIT flow, which sends tokens in the URL
+  // hash fragment — server routes can't read hash fragments, so the callback
+  // fails silently and the user lands on the Site URL with floating tokens.
+  const supabase = await createSupabaseServerClient()
 
-  const { error: otpErr } = await anon.auth.signInWithOtp({
+  const { error: otpErr } = await supabase.auth.signInWithOtp({
     email,
     options: {
       emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
