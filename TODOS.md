@@ -88,6 +88,35 @@ Captured deferrals. Each item names a specific future moment that brings it back
 
 ---
 
+### Additional planetary tiles
+
+**What:** Expand the tile registry beyond v0's five (Earth × 3, Mars × 1, Moon × 1) with additional public-domain DEMs from the rest of the solar system.
+
+**Why:** v0 already establishes the wedge — "build your fantasy continent from real Mars" is unique to MAURO. Extending the catalog deepens the moat, gives returning beta GMs new substrate to play with, and is essentially zero marginal pipeline work because `prep-tiles.ts` already handles GeoTIFF input regardless of source body.
+
+**Pros:** Each new body adds one tile entry, one CHECK constraint update, and one prep run. ~30 min/tile of work for a feature that GMs will keep finding for months. Several bodies have no Earth analog (no Earth ridge looks like Olympus Mons; no Earth crater looks like Tycho).
+
+**Cons:** Hillshade lighting params need per-body tuning (lunar maria are nearly flat at MOLA's resolution — needs higher zFactor; Mars has wildly different relief scales between Tharsis bulge and northern lowlands). Some bodies (Venus, Titan) have unusual signal characteristics that the hillshade module may need tweaks to render well.
+
+**Candidate bodies + iconic regions:**
+- **More Mars regions** — Valles Marineris (4,000 km canyon), Hellas Basin (largest impact crater), Northern Lowlands (smooth alien plains)
+- **More Moon regions** — Tycho crater + ray system, South Pole–Aitken basin, Mare Crisium
+- **Mercury** — MESSENGER MDIS-derived global DEM. Heavily cratered, looks like the Moon but more so. Caloris basin is iconic.
+- **Venus** — Magellan radar topography. Maxwell Montes (~11 km tall, taller than Everest). The whole surface is alien because it's volcanic and resurfaced.
+- **Titan** — Cassini RADAR. Sparse coverage but iconic dunes and methane seas.
+- **Pluto / Charon** — New Horizons topographic data. Sputnik Planitia (heart-shaped nitrogen ice plain), Cthulhu Macula (dark cratered highland).
+- **Asteroids / comets** — Bennu, Itokawa, 67P/Churyumov–Gerasimenko. Small total surface, but the SHAPES are fundamentally weird (rubble-pile asteroids look nothing like any planet). Perfect for "isolated micro-world" campaigns.
+
+**Sources (all public domain):** USGS Astrogeology Annex (https://astrogeology.usgs.gov/search/map/) is the single best entry point. PDS (Planetary Data System) backs everything. NASA's data-release policy is permissive across all missions.
+
+**Slug naming convention:** `{body}-{feature}` per the v0 convention. Examples: `mars-valles`, `mars-hellas`, `moon-tycho`, `mercury-caloris`, `venus-maxwell`, `titan-ligeia`, `pluto-sputnik`, `bennu-full`.
+
+**Depends on:** v0 ships and validates the pipeline against the initial 5-tile mix. Pull forward a body if a beta GM specifically requests it (high-signal demand).
+
+**Originating moment:** 2026-04-29 — user asked "are there any other planets we could use?" while discussing GeoTIFF acquisition. Locked Mars + Moon for v0 and parked the rest here.
+
+---
+
 ## v1 (per ROADMAP.md)
 
 Captured here as cross-references; full descriptions live in `docs/ROADMAP.md`.

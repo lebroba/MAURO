@@ -82,7 +82,14 @@ The composer ships in v0.1, after the substrate is validated end-to-end.
 
 4. **WorldQuery API (~2 days).** `packages/sim/src/query/WorldQuery.ts` — see `## WorldQuery Contract` below for the typed interface. Replay logic: load all events for a world up to a timestamp, fold via reducer to produce `WorldSnapshot`. No materialized view in v0 — replay-on-read is fine for ≤100 events per world (we'll add caching when it matters).
 
-5. **Tile prep script + curated tiles (~1.5 days; was 1).** `scripts/prep-tiles.ts` (Node, runs locally): for each of 3 hand-picked source regions (Patagonian fjords, Norwegian coast, central Asian massif — confirmable with the 3 GMs), crop SRTM/GEBCO via `sharp` + `geotiff.js`, output a hill-shaded PNG (web-display) + a 16-bit grayscale heightmap PNG (substrate, per CARRY_FORWARD radiometric calibration) + an is-land mask PNG + a polygon-coords JSON (one demo polygon per tile). Hill-shade requires custom implementation — see `## Hillshade Implementation` below. Outputs uploaded to Supabase Storage by the script (NOT committed; see Storage decision in Success Criteria).
+5. **Tile prep script + curated tiles (~2 days; was 1.5).** `scripts/prep-tiles.ts` (Node, runs locally): for each of 5 hand-picked source regions, decode the source DEM via `geotiff.js`, output a hill-shaded PNG (web-display) + a 16-bit grayscale heightmap PNG (substrate, per CARRY_FORWARD radiometric calibration) + an is-land/is-surface mask PNG + a `tile.json` metadata file (HillshadeParams, demoPolygon coords, source provenance + checksum). Hill-shade requires custom implementation — see `## Hillshade Implementation` below. Outputs uploaded to Supabase Storage by the script (NOT committed). Five tiles, three planets:
+   - `earth-patagonia` — SRTM 1-arcsec + GEBCO bathymetry
+   - `earth-norway` — SRTM 1-arcsec + GEBCO bathymetry
+   - `earth-pamirs` — SRTM 1-arcsec (no bathymetry — landlocked)
+   - `mars-tharsis` — MOLA MEGDR (Mars Orbiter Laser Altimeter)
+   - `moon-imbrium` — LOLA SLDEM2015 (Lunar Orbiter Laser Altimeter)
+
+   The `body` field in TileMetadata distinguishes Earth from non-Earth in the UI for attribution wording ("data via NASA SRTM" vs "data via NASA MOLA Science Team"). Hillshade params per tile are tuned at prep time to compensate for relief differences (Olympus Mons rises ~22 km; Earth's max relief is ~9 km; the lunar maria are nearly flat) — see Per-tile metadata under Hillshade Implementation.
 
 6. **World creation flow (~1 day).** "New World" page: pick one tile from the 3, set name + magic-level, click create. Persists a `WorldCreatedEvent` and a row in `worlds` (the row is a denormalized cache of the latest `WorldCreatedEvent`, not source of truth — see Data Model).
 
@@ -92,7 +99,7 @@ The composer ships in v0.1, after the substrate is validated end-to-end.
 
 9. **Beta allowlist + polish + e2e (~1.5 days).** `beta_allowlist` table seeded with the 3 named GM emails; auth callback rejects sign-ins not in the allowlist (magic-link is the auth method, allowlist is the gate — these are different things). Playwright happy-path test (sign up → create world → trigger event → scrub → see different render URL). Determinism test: same seed + same event sequence → identical substrate hash. Lighthouse target ≥80 on world detail.
 
-**Total (corrected): ~13.5 days of feature work after a 1-day bootstrap-remaining = 14.5 days end-to-end.** The arithmetic, by item: bootstrap 1 + determinism 0.5 + data model 1 + WorldQuery 2 + tile prep 1.5 + world creation 1 + world detail/MapLibre 1.5 + event/scrubber/render 3 + allowlist/polish/e2e 1.5 = 13. Plus the bootstrap day = 14. **~7 calendar days buffer before the 3-week wall** — better than the round-2 spec claimed, because the kickoff-bundle scaffolding had already absorbed ~1.5 days that the original budget treated as future work.
+**Total (corrected with 5-tile expansion): ~14 days of feature work after a 1-day bootstrap-remaining = 15 days end-to-end.** The arithmetic, by item: bootstrap 1 + determinism 0.5 + data model 1 + WorldQuery 2 + tile prep 2 (was 1.5; +0.5 for Mars + Moon tiles using MOLA/LOLA datasets we haven't worked with before) + world creation 1 + world detail/MapLibre 1.5 + event/scrubber/render 3 + allowlist/polish/e2e 1.5 = 13.5. Plus the bootstrap day = 14.5. **~6 calendar days buffer before the 3-week wall** — slightly tighter than the pre-expansion estimate (was ~7 days), but the planetary differentiation more than justifies the added day.
 
 **Honest risk callouts:**
 - Tile prep day budget (~1.5 days) assumes `geotiff.js` cooperates with SRTM/GEBCO on first try AND the custom hillshade implementation works in one pass. Worst-case: 2.5 days. Mitigation: day-1 spike on a single hand-cropped test tile before committing to the 3-region scope.
@@ -139,7 +146,9 @@ type World = {            // denormalized cache; events table is source of truth
   id: string;
   workspaceId: string;
   name: string;
-  tileSlug: 'patagonia' | 'norway' | 'centralasia';  // v0 dropdown
+  tileSlug:                                           // v0 dropdown
+    | 'earth-patagonia' | 'earth-norway' | 'earth-pamirs'
+    | 'mars-tharsis' | 'moon-imbrium';
   magicLevel: 'low' | 'standard' | 'high' | 'wild';
   masterSeed: string;     // hex, for determinism contract
   createdAt: string;
@@ -183,7 +192,10 @@ create table worlds (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references workspaces(id),
   name text not null,
-  tile_slug text not null check (tile_slug in ('patagonia','norway','centralasia')),
+  tile_slug text not null check (tile_slug in (
+    'earth-patagonia','earth-norway','earth-pamirs',
+    'mars-tharsis','moon-imbrium'
+  )),
   magic_level text not null check (magic_level in ('low','standard','high','wild')),
   master_seed text not null,
   created_at timestamptz not null default now(),
@@ -372,7 +384,10 @@ Both call paths import the SAME `computeHillshade()` so `(prep, render)` outputs
 ```ts
 // uploaded by scripts/prep-tiles.ts; read by render-on-write and by the world detail page.
 type TileMetadata = {
-  slug: 'patagonia' | 'norway' | 'centralasia';
+  slug:
+    | 'earth-patagonia' | 'earth-norway' | 'earth-pamirs'
+    | 'mars-tharsis' | 'moon-imbrium';
+  body: 'earth' | 'mars' | 'moon';     // for UI grouping + attribution wording
   sourceRegion: { name: string; lat: number; lon: number; widthDeg: number; heightDeg: number };
   cellSizeMeters: number;       // derived from source resolution
   hillshadeParams: HillshadeParams;
@@ -381,14 +396,15 @@ type TileMetadata = {
     pixels: Array<[number, number]>;   // closed polygon in tile-local pixel space
     description: string;               // for UI label, e.g. "Coastal lowland east of Skyhold"
   };
-  // Provenance + license — required, not optional. Surfaced in UI ("data via NASA SRTM").
+  // Provenance + license — required, not optional. Surfaced in UI per body
+  // ("data via NASA SRTM" for Earth; "data via NASA MOLA" for Mars; etc.).
   source: {
-    dataset: 'SRTM' | 'GEBCO' | 'ETOPO';
-    datasetVersion: string;            // e.g. "SRTMGL1.003"
+    dataset: 'SRTM' | 'GEBCO' | 'ETOPO' | 'MOLA' | 'LOLA' | 'SLDEM2015';
+    datasetVersion: string;            // e.g. "SRTMGL1.003", "MOLA-MEGDR-2003-128px"
     downloadUrl: string;               // canonical source for reproducibility
     fileChecksum: string;              // SHA256 of the downloaded source file (exact-pin per AP #4)
     license: 'public-domain';
-    attribution: string;               // e.g. "Courtesy of the U.S. Geological Survey"
+    attribution: string;               // e.g. "Courtesy of the U.S. Geological Survey" or "NASA / MOLA Science Team"
   };
 };
 ```
@@ -411,11 +427,17 @@ Outside voice (round 3) flagged that the trigger+webhook design solved a multi-p
 
 ## Open Questions
 
-- **Source tile curation:** Patagonian fjords, Norwegian coast, central Asian massif are the working picks. Confirm with the 3 named GMs before tile-prep day. Picks should be (a) visually distinctive in MapLibre, (b) have interesting coastlines, (c) avoid recognizable real-world political controversy.
-- **Demo polygon selection per tile:** for each of the 3 tiles, pick one polygon where volcanic uplift is visually obvious (e.g., a coastal lowland that becomes a ridge). Done at tile-prep time, hardcoded in `prep-tiles.ts` output JSON.
+- **Demo polygon selection per tile:** for each of the 5 tiles, pick one polygon where volcanic uplift is visually obvious (e.g., a coastal lowland that becomes a ridge; an existing volcanic flank that gets taller). Done at tile-prep time, hardcoded in `prep-tiles.ts` output JSON.
 - **Substrate hash includes which fields?** Heightmap bytes only, or `(heightmap, mask, applied_event_count)`? Lean toward heightmap-only since mask is immutable in v0 — but document the choice so feature #2 (which may mutate the mask) doesn't silently break the contract.
 
 **Resolved during this session (originally open):**
+- **Source tile curation → 5 picks locked (post-spike, post-design-system, with planetary expansion):**
+  - `earth-patagonia` (SRTM + GEBCO; fjords, glacial coastline, water-heavy)
+  - `earth-norway` (SRTM + GEBCO; fjords from a different geological history)
+  - `earth-pamirs` (SRTM only; Hindu Kush / Pamir massif, pure mountain, no ocean)
+  - `mars-tharsis` (MOLA; Tharsis Montes + Olympus Mons, volcanic shields, no atmospheric erosion to soften)
+  - `moon-imbrium` (LOLA / SLDEM2015; Mare Imbrium + Apennines, impact basin + lunar maria + crater rays)
+  - Rationale: 5 distinct geological histories produce 5 visual fingerprints; planet-prefixed slugs future-proof additional bodies (see TODOS.md). Also dramatically widens the wedge against Inkarnate/Wonderdraft — no other TTRPG worldbuilding tool can offer "build your fantasy continent from real Mars topography."
 - Demo event choice → `volcanic_uplift` (elevation-only, doesn't touch mask, simplest reducer).
 - Recipe vs. rasterization → moot. v0 has no composer; the "recipe" is just `{ tileSlug, magicLevel, masterSeed }`. Rasterization happens at render time, cached by substrate hash.
 - Auth scope → magic-link only for beta. Google OAuth deferred.
