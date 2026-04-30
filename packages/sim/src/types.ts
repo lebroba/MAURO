@@ -22,7 +22,8 @@ export type TileSlug =
 export type CelestialBody = 'earth' | 'mars' | 'moon'
 
 export type SourceDataset =
-  | 'SRTM' // NASA Shuttle Radar Topography Mission (Earth land)
+  | 'SRTM' // NASA Shuttle Radar Topography Mission (Earth land, ≤60°N)
+  | 'COP30' // Copernicus GLO-30 (Earth land, including >60°N where SRTM has no coverage)
   | 'GEBCO' // General Bathymetric Chart of the Oceans (Earth bathymetry)
   | 'ETOPO' // NOAA Earth Topo (Earth combined)
   | 'MOLA' // Mars Orbiter Laser Altimeter

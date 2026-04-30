@@ -218,13 +218,16 @@ const MANIFEST: TileEntry[] = [
       description: 'TODO: pick a fjord-mouth polygon in QGIS',
     },
     source: {
-      type: 'skip',
-      reason:
-        'SRTM does not cover above 60°N — needs Copernicus GLO-30 fallback. ' +
-        'Run: .venv/Scripts/python.exe fetch_norway_now.py from DEM-Downloads/',
+      type: 'srtm-tiles',
+      paths: [
+        'Earth/SRTM/Norway/N62E006_COP30.tif',
+        'Earth/SRTM/Norway/N62E007_COP30.tif',
+        'Earth/SRTM/Norway/N63E006_COP30.tif',
+        'Earth/SRTM/Norway/N63E007_COP30.tif',
+      ],
     },
     provenance: {
-      dataset: 'SRTM', // Will be updated to Copernicus once the source lands.
+      dataset: 'COP30',
       datasetVersion: 'GLO-30',
       downloadUrl: 'https://copernicus-dem-30m.s3.amazonaws.com/',
       license: 'public-domain',
