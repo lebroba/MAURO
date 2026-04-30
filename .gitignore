@@ -43,3 +43,9 @@ supabase/.temp/
 # Inputs to scripts/prep-tiles.ts; outputs ship to Supabase Storage.
 # NEVER commit — GitHub blocks files >100MB and the repo would become unworkable.
 mauro-sources/
+
+# stitch-poc Python venv
+scripts/stitch-poc/.venv/
+
+# Claude Code session state
+.claude/
