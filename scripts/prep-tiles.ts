@@ -385,8 +385,9 @@ async function processTile(entry: TileEntry): Promise<ProcessResult> {
   }
 
   // Read + mosaic the elevation data into a single Int16 grid covering the
-  // bounding box of all sources, in source resolution.
-  const mosaic = await readSourceMosaic(entry.source)
+  // bounding box of all sources, in source resolution. cropBounds is used by
+  // the windowed reader to avoid materializing huge global rasters.
+  const mosaic = await readSourceMosaic(entry.source, entry.cropBounds)
 
   // Crop the mosaic to entry.cropBounds, then resize to the target output
   // resolution (2048×2048).
@@ -459,28 +460,38 @@ interface MosaicGrid {
   height: number
   /** [latMin, latMax, lonMin, lonMax] of the mosaic. */
   bounds: [number, number, number, number]
-  /** Pixels per degree (assumed uniform within and across sources). */
-  pixelsPerDegree: number
+  /** Pixels per degree of LONGITUDE. Copernicus reduces this at high latitudes. */
+  pixelsPerDegreeX: number
+  /** Pixels per degree of LATITUDE. */
+  pixelsPerDegreeY: number
 }
 
 async function readSourceMosaic(
   source: Exclude<SourceSpec, SkipSpec>,
+  cropBounds: [number, number, number, number],
 ): Promise<MosaicGrid> {
   if (source.type === 'srtm-tiles') {
     return await readSrtmMosaic(source.paths)
   }
-  // 'geotiff-region': single source covers the target region.
-  return await readSingleGeotiff(source.path)
+  // 'geotiff-region': single source — windowed read avoids materializing
+  // huge global rasters (MOLA is 2GB / 1B samples, would OOM Node otherwise).
+  return await readSingleGeotiff(source.path, cropBounds)
 }
 
 async function readSrtmMosaic(relPaths: string[]): Promise<MosaicGrid> {
-  // Read each tile, get its bbox, find the union, allocate a single grid,
-  // copy pixels into the right location.
+  // Read each tile, get its bbox + per-axis resolution, find the union,
+  // allocate a single grid, copy pixels into the right location.
+  //
+  // Critical: Copernicus GLO-30 tiles above ~50° latitude have NON-SQUARE
+  // pixels (e.g., 1800×3600 covering 1°×1°), so ppdX ≠ ppdY. SRTM is square.
+  // Code below tracks both axes separately to handle either case.
   type Tile = {
     data: Int16Array
     width: number
     height: number
-    bounds: [number, number, number, number]
+    bounds: [number, number, number, number] // [latMin, latMax, lonMin, lonMax]
+    ppdX: number
+    ppdY: number
   }
   const tiles: Tile[] = []
   for (const rel of relPaths) {
@@ -493,17 +504,37 @@ async function readSrtmMosaic(relPaths: string[]): Promise<MosaicGrid> {
     const bbox = image.getBoundingBox() // [west, south, east, north] (lon/lat)
     const rasters = await image.readRasters({ interleave: false })
     const data = rasters[0]
-    if (!data || !(data instanceof Int16Array || data instanceof Float32Array)) {
-      throw new Error(`Unexpected raster type for ${rel}`)
+    if (
+      !data ||
+      !(
+        data instanceof Int16Array ||
+        data instanceof Uint16Array ||
+        data instanceof Float32Array
+      )
+    ) {
+      throw new Error(`Unexpected raster type for ${rel}: ${data?.constructor?.name}`)
     }
     const width = image.getWidth()
     const height = image.getHeight()
-    const i16 = data instanceof Int16Array ? data : Int16Array.from(data)
+    const lonRange = bbox[2]! - bbox[0]! // east - west
+    const latRange = bbox[3]! - bbox[1]! // north - south
+    const ppdX = (width - 1) / lonRange
+    const ppdY = (height - 1) / latRange
+    // Cast Float32 (Copernicus) → Int16 by rounding. Sub-meter precision is
+    // acceptable for the 16-bit calibration we apply later.
+    const i16 =
+      data instanceof Int16Array
+        ? data
+        : data instanceof Float32Array
+          ? Int16Array.from(data, (v) => Math.round(v))
+          : Int16Array.from(data as Uint16Array)
     tiles.push({
       data: i16,
       width,
       height,
-      bounds: [bbox[1]!, bbox[3]!, bbox[0]!, bbox[2]!], // [latMin, latMax, lonMin, lonMax]
+      bounds: [bbox[1]!, bbox[3]!, bbox[0]!, bbox[2]!],
+      ppdX,
+      ppdY,
     })
   }
 
@@ -519,26 +550,35 @@ async function readSrtmMosaic(relPaths: string[]): Promise<MosaicGrid> {
     if (t.bounds[3] > lonMax) lonMax = t.bounds[3]
   }
 
-  // SRTM 1-arcsec global = 3601 px per degree (3600 + edge overlap).
-  const ppd = (tiles[0]!.width - 1) / (tiles[0]!.bounds[3] - tiles[0]!.bounds[2])
+  // Use the FIRST tile's per-axis resolution as the mosaic's resolution.
+  // For SRTM all tiles are equal; for Copernicus, all tiles at a given
+  // latitude band are equal too (the same horizontal compression applies
+  // uniformly). If a future mosaic spans multiple latitude bands with
+  // different ppdX values, this would need upsample/downsample.
+  const ppdX = tiles[0]!.ppdX
+  const ppdY = tiles[0]!.ppdY
 
-  const mosaicWidth = Math.round((lonMax - lonMin) * ppd) + 1
-  const mosaicHeight = Math.round((latMax - latMin) * ppd) + 1
+  const mosaicWidth = Math.round((lonMax - lonMin) * ppdX) + 1
+  const mosaicHeight = Math.round((latMax - latMin) * ppdY) + 1
   const data = new Int16Array(mosaicWidth * mosaicHeight)
-  // Initialize to a sentinel "no data" value. SRTM sentinel is -32768; we use 0
-  // since we want sea-level fallback for missing tiles (gives a clean ocean
-  // mask without weird artefacts).
   data.fill(0)
 
   for (const t of tiles) {
-    const xOffset = Math.round((t.bounds[2] - lonMin) * ppd)
-    const yOffset = Math.round((latMax - t.bounds[1]) * ppd) // tiff origin is top-left = north
+    const xOffset = Math.round((t.bounds[2] - lonMin) * ppdX)
+    const yOffset = Math.round((latMax - t.bounds[1]) * ppdY)
     for (let ty = 0; ty < t.height; ty++) {
+      const dstY = yOffset + ty
+      if (dstY < 0 || dstY >= mosaicHeight) continue
       const srcRow = ty * t.width
-      const dstRow = (yOffset + ty) * mosaicWidth + xOffset
+      const dstRow = dstY * mosaicWidth + xOffset
       for (let tx = 0; tx < t.width; tx++) {
+        const dstX = xOffset + tx
+        if (dstX < 0 || dstX >= mosaicWidth) continue
         const v = t.data[srcRow + tx]!
-        // SRTM uses -32768 as "no data". Treat as 0 for our purposes.
+        // SRTM uses -32768 as "no data"; Copernicus uses no GDAL_NODATA tag
+        // but spurious negatives in ocean areas (saw min=-0.84). Treat the
+        // SRTM sentinel as 0 (sea level) and let real negatives pass through
+        // (they get clipped by the datum-offset clamp downstream).
         data[dstRow + tx] = v === -32768 ? 0 : v
       }
     }
@@ -549,35 +589,112 @@ async function readSrtmMosaic(relPaths: string[]): Promise<MosaicGrid> {
     width: mosaicWidth,
     height: mosaicHeight,
     bounds: [latMin, latMax, lonMin, lonMax],
-    pixelsPerDegree: ppd,
+    pixelsPerDegreeX: ppdX,
+    pixelsPerDegreeY: ppdY,
   }
 }
 
-async function readSingleGeotiff(rel: string): Promise<MosaicGrid> {
+async function readSingleGeotiff(
+  rel: string,
+  cropBounds: [number, number, number, number],
+): Promise<MosaicGrid> {
   const abs = path.join(SOURCE_DIR, rel)
   const buf = await readFile(abs)
   const tiff = await fromArrayBuffer(
     buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer,
   )
   const image = await tiff.getImage()
-  const bbox = image.getBoundingBox()
-  const rasters = await image.readRasters({ interleave: false })
+  const rawBbox = image.getBoundingBox() // [west, south, east, north] in source CRS units
+  const fileDirectory = image.fileDirectory as Record<string, unknown>
+  const geoKeys = (image.geoKeys ?? {}) as Record<string, unknown>
+  const fullWidth = image.getWidth()
+  const fullHeight = image.getHeight()
+
+  // Detect projected (meters) vs geographic (degrees).
+  // ProjLinearUnitsGeoKey 9001 = meter (EPSG). MOLA uses Mars equirectangular
+  // in meters; we convert to degrees using the body's equatorial radius so
+  // cropBounds (in degrees) can intersect the raster.
+  const projUnits = geoKeys.ProjLinearUnitsGeoKey
+  let bbox = rawBbox
+  let metersPerDegree: number | null = null
+  if (projUnits === 9001 || Math.abs(rawBbox[0]!) > 360) {
+    // Body detection by bbox magnitude.
+    const halfWidth = Math.abs(rawBbox[2]!)
+    const equatorialRadiusM =
+      halfWidth > 15_000_000
+        ? 6378137 // Earth WGS84
+        : halfWidth > 8_000_000
+          ? 3389500 // Mars (MOLA datum)
+          : 1737400 // Moon (LRO datum)
+    metersPerDegree = (Math.PI * equatorialRadiusM) / 180
+    bbox = [
+      rawBbox[0]! / metersPerDegree,
+      rawBbox[1]! / metersPerDegree,
+      rawBbox[2]! / metersPerDegree,
+      rawBbox[3]! / metersPerDegree,
+    ]
+  }
+
+  const lonRange = bbox[2]! - bbox[0]!
+  const latRange = bbox[3]! - bbox[1]!
+  const ppdX = (fullWidth - 1) / lonRange
+  const ppdY = (fullHeight - 1) / latRange
+
+  // Compute the windowed read box in PIXEL coords.
+  // cropBounds is [latMin, latMax, lonMin, lonMax]. Source y-axis origin is
+  // top (north). Apply a 1-tile margin so the window definitely contains the
+  // full crop after resampling.
+  const [cropLatMin, cropLatMax, cropLonMin, cropLonMax] = cropBounds
+  const xPxStart = Math.max(0, Math.floor((cropLonMin - bbox[0]!) * ppdX) - 2)
+  const xPxEnd = Math.min(fullWidth, Math.ceil((cropLonMax - bbox[0]!) * ppdX) + 2)
+  const yPxStart = Math.max(0, Math.floor((bbox[3]! - cropLatMax) * ppdY) - 2)
+  const yPxEnd = Math.min(fullHeight, Math.ceil((bbox[3]! - cropLatMin) * ppdY) + 2)
+
+  if (xPxEnd <= xPxStart || yPxEnd <= yPxStart) {
+    throw new Error(
+      `Crop bounds [${cropBounds.join(',')}] don't intersect source ` +
+        `[lat ${bbox[1]}..${bbox[3]}, lon ${bbox[0]}..${bbox[2]}] of ${rel}`,
+    )
+  }
+
+  // Windowed read — only materializes the cropped region. Critical for MOLA
+  // (2GB / 1B samples global) which would OOM Node otherwise.
+  const window: [number, number, number, number] = [xPxStart, yPxStart, xPxEnd, yPxEnd]
+  const rasters = await image.readRasters({ interleave: false, window })
   const raw = rasters[0]
   if (!raw) throw new Error(`No raster band in ${rel}`)
-  const width = image.getWidth()
-  const height = image.getHeight()
+
+  const winWidth = xPxEnd - xPxStart
+  const winHeight = yPxEnd - yPxStart
+
+  const nodataStr = (fileDirectory.GDAL_NODATA as string | undefined)?.replace(
+    /\0/g,
+    '',
+  )
+  const nodata = nodataStr ? Number(nodataStr) : null
+
   const data =
     raw instanceof Int16Array
-      ? raw
+      ? Int16Array.from(raw, (v) => (nodata !== null && v === nodata ? 0 : v))
       : raw instanceof Float32Array
-        ? Int16Array.from(raw, (v) => Math.round(v))
+        ? Int16Array.from(raw, (v) =>
+            nodata !== null && v === nodata ? 0 : Math.round(v),
+          )
         : Int16Array.from(raw as ArrayLike<number>)
+
+  // The MosaicGrid bounds describe the window we read, not the full source.
+  const winLonMin = bbox[0]! + xPxStart / ppdX
+  const winLonMax = bbox[0]! + xPxEnd / ppdX
+  const winLatMax = bbox[3]! - yPxStart / ppdY
+  const winLatMin = bbox[3]! - yPxEnd / ppdY
+
   return {
     data,
-    width,
-    height,
-    bounds: [bbox[1]!, bbox[3]!, bbox[0]!, bbox[2]!],
-    pixelsPerDegree: width / (bbox[2]! - bbox[0]!),
+    width: winWidth,
+    height: winHeight,
+    bounds: [winLatMin, winLatMax, winLonMin, winLonMax],
+    pixelsPerDegreeX: ppdX,
+    pixelsPerDegreeY: ppdY,
   }
 }
 
@@ -592,12 +709,17 @@ async function cropAndResize(
   targetH: number,
 ): Promise<Int16Array> {
   const [latMin, latMax, lonMin, lonMax] = cropBounds
-  const ppd = src.pixelsPerDegree
 
-  const xStart = Math.max(0, Math.floor((lonMin - src.bounds[2]) * ppd))
-  const xEnd = Math.min(src.width, Math.ceil((lonMax - src.bounds[2]) * ppd))
-  const yStart = Math.max(0, Math.floor((src.bounds[1] - latMax) * ppd))
-  const yEnd = Math.min(src.height, Math.ceil((src.bounds[1] - latMin) * ppd))
+  const xStart = Math.max(0, Math.floor((lonMin - src.bounds[2]) * src.pixelsPerDegreeX))
+  const xEnd = Math.min(
+    src.width,
+    Math.ceil((lonMax - src.bounds[2]) * src.pixelsPerDegreeX),
+  )
+  const yStart = Math.max(0, Math.floor((src.bounds[1] - latMax) * src.pixelsPerDegreeY))
+  const yEnd = Math.min(
+    src.height,
+    Math.ceil((src.bounds[1] - latMin) * src.pixelsPerDegreeY),
+  )
 
   const cropW = xEnd - xStart
   const cropH = yEnd - yStart
