@@ -57,6 +57,41 @@ const COMBOS: Combo[] = [
   },
 ]
 
+interface WarpCombo {
+  slug: string
+  title: string
+  caption: string
+}
+
+const WARP_COMBOS: WarpCombo[] = [
+  {
+    slug: 'earth-pamirs-x-mars-tharsis-warped',
+    title: 'Same data, shape-modified',
+    caption:
+      'Same Pamir + Tharsis source as above. Top: original stitched output — ' +
+      'Olympus Mons is recognizably itself, Pamirs ridges run east-west like ' +
+      'the real range. Bottom: each source tile gets a random rigid transform ' +
+      '(mirror + 90° rotation) before stitching, then the entire blended ' +
+      'canvas is fractal-domain-warped at 50-pixel amplitude. Coastlines bend, ' +
+      "ridge orientations rotate, the volcano's radial flanks distort into " +
+      'asymmetric ridges. The seam is still invisible — the warp crosses it ' +
+      'and distorts both halves coherently. The result no longer matches any ' +
+      'specific Earth or Mars feature; it reads as a place that exists nowhere.',
+  },
+  {
+    slug: 'earth-pamirs-x-earth-patagonia-warped',
+    title: 'Earth + Earth, no longer Earth',
+    caption:
+      "Same Pamir + Patagonia source. The fjord coast that's so distinctively " +
+      'Patagonian — long horizontal valleys cutting in from the west — survives ' +
+      "the unwarped pipeline as itself. After mirror, 180° rotation, and warp, " +
+      'those valleys become organic inlets bent into shapes that don\'t match ' +
+      'any real glacier system. This is the cheap fix to "everything generated ' +
+      'looks recognizably Earth": apply a controlled distortion field as the ' +
+      'last step before render.',
+  },
+]
+
 export default function StitchPocPage() {
   return (
     <main className="bg-bg flex min-h-screen flex-col">
@@ -99,10 +134,44 @@ export default function StitchPocPage() {
           range fits Earth&rsquo;s 9 km without losing geometric character.
         </p>
 
-        {/* Combos */}
+        {/* Combos — original stitched */}
         <div className="space-y-16">
           {COMBOS.map((c) => (
             <ComboPanel key={c.slug} combo={c} />
+          ))}
+        </div>
+
+        {/* Section break — shape modification */}
+        <div className="mt-24 mb-12">
+          <div className="border-hairline border-t" />
+          <div className="label-caps mt-12 mb-3 flex items-center gap-3">
+            <span className="bg-verdigris h-1.5 w-1.5 rounded-full" />
+            Modifying continent shapes
+          </div>
+          <h2 className="font-display mb-5 text-4xl leading-tight md:text-5xl">
+            Same data,
+            <br />
+            <em className="text-verdigris">unrecognizable continents.</em>
+          </h2>
+          <p className="text-ink font-serif mb-2 max-w-2xl text-base leading-relaxed">
+            Real-Earth tiles still look like Earth even when stitched. To break
+            that recognition, two cheap layers run AFTER the blend: per-tile
+            random rigid transforms (mirror + 90° rotation) eliminate strong
+            orientation cues, then a fractal domain-warp on the stitched canvas
+            bends every coastline through a multi-octave noise field. The result
+            preserves geological character — alpine massifs are still alpine,
+            volcanic shields still read as volcanic — but the SHAPES no longer
+            match any specific real place.
+          </p>
+          <p className="font-serif text-muted max-w-2xl text-sm italic leading-relaxed">
+            The warp crosses the tile seam, which has the side effect of
+            hiding the seam even more completely. Roughly 80 lines of numpy.
+          </p>
+        </div>
+
+        <div className="space-y-16">
+          {WARP_COMBOS.map((c) => (
+            <WarpPanel key={c.slug} combo={c} />
           ))}
         </div>
 
@@ -128,6 +197,41 @@ export default function StitchPocPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+function WarpPanel({ combo }: { combo: WarpCombo }) {
+  const webImg = `${STORAGE_PUBLIC}/${combo.slug}/comparison_web.jpg`
+  const fullPng = `${STORAGE_PUBLIC}/${combo.slug}/comparison.png`
+  return (
+    <section>
+      <h3 className="font-display mb-4 text-2xl leading-tight md:text-3xl">
+        {combo.title}
+      </h3>
+      <p className="text-ink font-serif mb-6 max-w-3xl text-base leading-relaxed">
+        {combo.caption}
+      </p>
+      <div className="border-hairline overflow-hidden border bg-black">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={webImg}
+          alt={`Before/after sheet: ${combo.title} — original stitched on top, shape-modified on bottom.`}
+          loading="lazy"
+          className="block h-auto w-full"
+        />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
+        <a
+          href={fullPng}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-muted hover:text-ink underline transition-colors"
+        >
+          Full-resolution PNG →
+        </a>
+        <span className="text-muted font-mono text-[0.7rem]">{combo.slug}</span>
+      </div>
+    </section>
   )
 }
 

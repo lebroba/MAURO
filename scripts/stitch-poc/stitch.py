@@ -40,7 +40,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
-from scipy.ndimage import gaussian_filter, zoom
+from scipy.ndimage import gaussian_filter, map_coordinates, zoom
 
 # WhiteboxTools is heavy (downloads a binary on first use) — import lazily
 # so --help works without it.
@@ -394,18 +394,138 @@ def hillshade_horn(
 
 
 # ----------------------------------------------------------------------
+# Shape modification — random rigid transforms + fractal domain warping
+# ----------------------------------------------------------------------
+#
+# Real-Earth tiles have recognizable coastlines. Patagonia looks like
+# Patagonia; the Pamirs read as the Pamirs. To break that recognition
+# without losing geological character, two cheap-but-effective layers:
+#
+#   1. Per-tile rigid transforms (mirror, 90° rotate). Lossless. Eliminates
+#      the strongest "I know that coast" signal at zero data cost.
+#   2. Fractal domain warping on the final stitched canvas. Sample the
+#      heightmap at warped coordinates, where the warp field is multi-octave
+#      smooth noise. Coastlines bend organically; the warp crosses the
+#      seam so it distorts both halves coherently and hides the seam even
+#      further.
+#
+# Combine the two: tile A might be flipped horizontally, tile B might be
+# rotated 270°, then the entire blended canvas warped by ~60-pixel
+# amplitude noise. The output reads as a continent that exists nowhere.
+
+
+def random_rigid_transform(
+    heightmap: np.ndarray, mirror: bool, rotate_quarters: int
+) -> np.ndarray:
+    """Apply mirror + 90° rotation. Lossless on square tiles.
+
+    rotate_quarters: 0/1/2/3 — number of CCW 90° rotations. For a square
+    2048×2048 input the output is still 2048×2048.
+    """
+    out = heightmap
+    if mirror:
+        out = np.fliplr(out)
+    if rotate_quarters:
+        out = np.rot90(out, k=rotate_quarters % 4)
+    return np.ascontiguousarray(out)
+
+
+def fractal_noise_2d(shape: tuple[int, int], octaves: int, seed: int) -> np.ndarray:
+    """Multi-octave smooth noise via stacked Gaussian-filtered random fields.
+
+    Returns float32 array roughly normalized to [-1, 1]. Lower octaves
+    contribute large smooth features; higher octaves add finer detail.
+    No external noise library — Gaussian-filtered white noise gets you
+    most of Perlin's perceptual character at a fraction of the deps.
+    """
+    rng = np.random.default_rng(seed)
+    h, w = shape
+    out = np.zeros((h, w), dtype=np.float32)
+    amp = 1.0
+    # sigma decreases per octave: octave 0 has the largest features
+    # (sigma ~ 64 for 2k tiles), octave N has the finest.
+    base_sigma = max(h, w) / 32.0
+    for octave in range(octaves):
+        sigma = max(1.0, base_sigma / (2**octave))
+        noise = rng.standard_normal((h, w)).astype(np.float32)
+        smoothed = gaussian_filter(noise, sigma=sigma)
+        out += smoothed * amp
+        amp *= 0.5
+    peak = np.abs(out).max()
+    if peak > 0:
+        out /= peak
+    return out
+
+
+def domain_warp(
+    heightmap: np.ndarray,
+    amp_pixels: float,
+    octaves: int = 4,
+    seed: int = 42,
+) -> np.ndarray:
+    """Apply 2D fractal domain warping.
+
+    For each output pixel (y, x), sample input at (y + dy(y,x), x + dx(y,x))
+    where dy and dx are independent fractal noise fields scaled by
+    amp_pixels. Bilinear interpolation via scipy.ndimage.map_coordinates.
+
+    amp_pixels: maximum displacement magnitude. ~30 = subtle, ~80 = strong,
+    ~150 = aggressive (coastlines may break apart). Default in the CLI is
+    moderate so the result is recognizable as the same world but not as
+    the same continent shape.
+    """
+    h, w = heightmap.shape
+    dy_field = fractal_noise_2d((h, w), octaves=octaves, seed=seed) * amp_pixels
+    dx_field = fractal_noise_2d((h, w), octaves=octaves, seed=seed + 17) * amp_pixels
+    yy, xx = np.mgrid[:h, :w].astype(np.float32)
+    coords = np.stack([yy + dy_field, xx + dx_field])
+    warped = map_coordinates(
+        heightmap.astype(np.float32),
+        coords,
+        order=1,  # bilinear
+        mode="reflect",
+    )
+    return np.clip(warped, 0, 65535).astype(np.uint16)
+
+
+# ----------------------------------------------------------------------
 # Pipeline driver
 # ----------------------------------------------------------------------
 
 
-def run_pipeline(slug_a: str, slug_b: str, overlap_pct: float = 0.20, levels: int = 6) -> Path:
-    out_dir = OUTPUT_ROOT / f"{slug_a}-x-{slug_b}"
+def run_pipeline(
+    slug_a: str,
+    slug_b: str,
+    overlap_pct: float = 0.20,
+    levels: int = 6,
+    *,
+    mirror_a: bool = False,
+    mirror_b: bool = False,
+    rotate_a: int = 0,
+    rotate_b: int = 0,
+    warp_amp: float = 0.0,
+    warp_octaves: int = 4,
+    warp_seed: int = 42,
+    out_suffix: str = "",
+) -> Path:
+    combo = f"{slug_a}-x-{slug_b}"
+    if out_suffix:
+        combo = f"{combo}-{out_suffix}"
+    out_dir = OUTPUT_ROOT / combo
     intermediates = out_dir / "intermediate"
     intermediates.mkdir(parents=True, exist_ok=True)
 
     print(f"[1/9] Loading {slug_a} + {slug_b}...")
     h_a = load_heightmap(slug_a)
     h_b_raw = load_heightmap(slug_b)
+    if mirror_a or rotate_a:
+        h_a = random_rigid_transform(h_a, mirror=mirror_a, rotate_quarters=rotate_a)
+        print(f"      tile A: mirror={mirror_a}, rot90x{rotate_a}")
+    if mirror_b or rotate_b:
+        h_b_raw = random_rigid_transform(
+            h_b_raw, mirror=mirror_b, rotate_quarters=rotate_b
+        )
+        print(f"      tile B: mirror={mirror_b}, rot90x{rotate_b}")
     h, w = h_a.shape
     print(f"      shape={h}x{w}, dtype={h_a.dtype}")
 
@@ -458,6 +578,17 @@ def run_pipeline(slug_a: str, slug_b: str, overlap_pct: float = 0.20, levels: in
 
     print(f"[8/9] Final histogram-match against {slug_a} reference...")
     final = histogram_match(cleaned, h_a)
+    save_heightmap(final, intermediates / "08_final_pre_warp.png")
+
+    if warp_amp > 0:
+        print(
+            f"      domain-warping (amp={warp_amp}px, octaves={warp_octaves}, seed={warp_seed})..."
+        )
+        final = domain_warp(
+            final, amp_pixels=warp_amp, octaves=warp_octaves, seed=warp_seed
+        )
+        save_heightmap(final, intermediates / "09_warped.png")
+
     save_heightmap(final, out_dir / "heightmap.png")
     print(f"      ->{out_dir / 'heightmap.png'}")
 
@@ -492,8 +623,63 @@ def main() -> int:
         default=6,
         help="Pyramid levels for multi-band blend. Default 6.",
     )
+    # Shape-modification flags. Default off so the unwarped pipeline runs
+    # unchanged when these aren't passed.
+    parser.add_argument(
+        "--mirror-a", action="store_true", help="Mirror tile A horizontally before stitching."
+    )
+    parser.add_argument(
+        "--mirror-b", action="store_true", help="Mirror tile B horizontally before stitching."
+    )
+    parser.add_argument(
+        "--rotate-a",
+        type=int,
+        default=0,
+        choices=[0, 1, 2, 3],
+        help="Rotate tile A by N*90° CCW before stitching.",
+    )
+    parser.add_argument(
+        "--rotate-b",
+        type=int,
+        default=0,
+        choices=[0, 1, 2, 3],
+        help="Rotate tile B by N*90° CCW before stitching.",
+    )
+    parser.add_argument(
+        "--warp-amp",
+        type=float,
+        default=0.0,
+        help="Domain-warp amplitude in pixels. 0 = off (default). 30 subtle, 80 strong, 150 aggressive.",
+    )
+    parser.add_argument(
+        "--warp-octaves",
+        type=int,
+        default=4,
+        help="Octaves for the domain-warp noise field. Default 4.",
+    )
+    parser.add_argument(
+        "--warp-seed", type=int, default=42, help="Seed for warp noise. Default 42."
+    )
+    parser.add_argument(
+        "--out-suffix",
+        default="",
+        help="Suffix appended to output dir name (e.g. 'warped'). Default empty.",
+    )
     args = parser.parse_args()
-    out_dir = run_pipeline(args.slug_a, args.slug_b, args.overlap, args.levels)
+    out_dir = run_pipeline(
+        args.slug_a,
+        args.slug_b,
+        overlap_pct=args.overlap,
+        levels=args.levels,
+        mirror_a=args.mirror_a,
+        mirror_b=args.mirror_b,
+        rotate_a=args.rotate_a,
+        rotate_b=args.rotate_b,
+        warp_amp=args.warp_amp,
+        warp_octaves=args.warp_octaves,
+        warp_seed=args.warp_seed,
+        out_suffix=args.out_suffix,
+    )
     print(f"\n[done] Open: {out_dir / 'hillshade.png'}")
     return 0
 
