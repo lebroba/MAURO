@@ -171,6 +171,14 @@ export interface TileMetadata {
   hillshadeParams: HillshadeParams
   demoPolygon: DemoPolygon
   source: TileSourceProvenance
+  /** SHA256 of the source heightmap bytes (the substrate hash for the
+   * WorldCreated state, before any GeographyMutation events have been
+   * applied). The hillshade PNG is uploaded to
+   * tiles-rendered/{sourceSubstrateHash}.png at prep time. The world
+   * detail page reads this from tile.json to construct the initial
+   * `/api/render/{hash}.png` URL without running the full WorldQuery
+   * replay path. */
+  sourceSubstrateHash: string
 }
 
 // ----------------------------------------------------------------------------

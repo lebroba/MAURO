@@ -10,6 +10,8 @@
   "dependencies": {
     "@mauro/geo": "workspace:*",
     "@mauro/sim": "workspace:*",
+    "@supabase/supabase-js": "2.105.1",
+    "dotenv": "17.4.2",
     "geotiff": "2.1.3",
     "sharp": "0.33.5"
   },

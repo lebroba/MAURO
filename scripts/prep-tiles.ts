@@ -29,8 +29,10 @@ import { readFile, writeFile, mkdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
+import { config as loadDotenv } from 'dotenv'
 import sharp from 'sharp'
 import { fromArrayBuffer } from 'geotiff'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { computeHillshade, type HillshadeParams } from '@mauro/geo'
 import type {
   DemoPolygon,
@@ -48,12 +50,22 @@ const REPO_ROOT = path.resolve(__dirname, '..')
 const SOURCE_DIR = path.join(REPO_ROOT, 'mauro-sources', 'DEM-Downloads')
 const OUT_DIR = path.join(SOURCE_DIR, '_processed')
 
+// Pull Supabase creds from apps/web/.env.local (single source of truth — same
+// values the running web app uses).
+loadDotenv({ path: path.join(REPO_ROOT, 'apps', 'web', '.env.local') })
+
 const TARGET_W = 2048
 const TARGET_H = 2048
 
 // Sea level / datum offset. Pixels at this value = "sea level."
 // Pixels above = land/mountain. Pixels below = ocean/basin.
 const DATUM_OFFSET = 32768
+
+// Storage buckets (created by supabase/migrations/0004_storage_buckets.sql).
+const TILES_BUCKET = 'tiles'
+const RENDERED_BUCKET = 'tiles-rendered'
+
+const SHOULD_UPLOAD = !process.env.PREP_SKIP_UPLOAD
 
 // ============================================================================
 // Manifest — the 5 v0 tiles, with per-tile sources, bounds, and parameters.
@@ -345,7 +357,10 @@ async function main() {
         skipped++
         continue
       }
-      console.log(`${banner}   ✓ done — ${result.outputDir}\n`)
+      const uploadNote = result.uploaded
+        ? `   ↗ uploaded to Storage (substrateHash: ${result.substrateHash?.slice(0, 12)}…)`
+        : '   (upload skipped via PREP_SKIP_UPLOAD)'
+      console.log(`${banner}   ✓ done — ${result.outputDir}\n${banner}${uploadNote}\n`)
       processed++
     } catch (err) {
       console.error(
@@ -363,6 +378,8 @@ interface ProcessResult {
   outputDir?: string
   skipped: boolean
   reason?: string
+  substrateHash?: string
+  uploaded?: boolean
 }
 
 async function processTile(entry: TileEntry): Promise<ProcessResult> {
@@ -425,6 +442,14 @@ async function processTile(entry: TileEntry): Promise<ProcessResult> {
   // Compute SHA256 of all source files (for provenance).
   const fileChecksum = await computeSourcesChecksum(sourcePaths)
 
+  // Compute the substrate hash for the WORLD-CREATED state (no events
+  // applied yet). This is what WorldQuery returns as substrateHash for any
+  // newly-created world before its first GeographyMutation event. Future
+  // event-mutated states get their own hashes computed at write-time
+  // (Item 8). The world detail page can build its initial render URL from
+  // this hash without running the full WorldQuery replay.
+  const substrateHash = sha256OfHeightmap(heightmap)
+
   const tileMeta: TileMetadata = {
     slug: entry.slug,
     body: entry.body,
@@ -433,14 +458,81 @@ async function processTile(entry: TileEntry): Promise<ProcessResult> {
     hillshadeParams: entry.hillshadeParams,
     demoPolygon: entry.demoPolygon,
     source: { ...entry.provenance, fileChecksum },
+    sourceSubstrateHash: substrateHash,
   }
-  await writeFile(
-    path.join(outDir, 'tile.json'),
-    JSON.stringify(tileMeta, null, 2) + '\n',
-    'utf8',
-  )
+  const tileJsonStr = JSON.stringify(tileMeta, null, 2) + '\n'
+  await writeFile(path.join(outDir, 'tile.json'), tileJsonStr, 'utf8')
 
-  return { outputDir: outDir, skipped: false }
+  // Upload to Supabase Storage so MapLibre + the /api/render route can fetch.
+  if (SHOULD_UPLOAD) {
+    const supabase = getSupabase()
+    const heightmapBuf = await readFile(path.join(outDir, 'heightmap.png'))
+    const maskBuf = await readFile(path.join(outDir, 'mask.png'))
+    const hillshadeBuf = await readFile(path.join(outDir, 'hillshade.png'))
+
+    await uploadObject(supabase, TILES_BUCKET, `${entry.slug}/heightmap.png`, heightmapBuf, 'image/png')
+    await uploadObject(supabase, TILES_BUCKET, `${entry.slug}/mask.png`, maskBuf, 'image/png')
+    await uploadObject(supabase, TILES_BUCKET, `${entry.slug}/tile.json`, Buffer.from(tileJsonStr, 'utf8'), 'application/json')
+    await uploadObject(supabase, RENDERED_BUCKET, `${substrateHash}.png`, hillshadeBuf, 'image/png')
+
+    return {
+      outputDir: outDir,
+      skipped: false,
+      substrateHash,
+      uploaded: true,
+    }
+  }
+
+  return { outputDir: outDir, skipped: false, substrateHash, uploaded: false }
+}
+
+// ============================================================================
+// Storage upload
+// ============================================================================
+
+let _supabase: SupabaseClient | null = null
+function getSupabase(): SupabaseClient {
+  if (_supabase) return _supabase
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceKey) {
+    throw new Error(
+      'prep-tiles upload requires NEXT_PUBLIC_SUPABASE_URL and ' +
+        'SUPABASE_SERVICE_ROLE_KEY in apps/web/.env.local. Set ' +
+        'PREP_SKIP_UPLOAD=1 to run prep without uploading.',
+    )
+  }
+  _supabase = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  return _supabase
+}
+
+async function uploadObject(
+  supabase: SupabaseClient,
+  bucket: string,
+  objectPath: string,
+  body: Buffer,
+  contentType: string,
+): Promise<void> {
+  const { error } = await supabase.storage.from(bucket).upload(objectPath, body, {
+    contentType,
+    upsert: true,
+  })
+  if (error) {
+    throw new Error(
+      `Storage upload failed (${bucket}/${objectPath}): ${error.message}`,
+    )
+  }
+}
+
+function sha256OfHeightmap(heightmap: Uint16Array): string {
+  const buffer = Buffer.from(
+    heightmap.buffer,
+    heightmap.byteOffset,
+    heightmap.byteLength,
+  )
+  return createHash('sha256').update(buffer).digest('hex')
 }
 
 function collectSourcePaths(source: Exclude<SourceSpec, SkipSpec>): string[] {
