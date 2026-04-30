@@ -96,7 +96,16 @@ export function MapView({ imageUrl, coordsLabel, tileLabel }: MapViewProps) {
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="absolute inset-0" />
+      {/* Inline position+inset because MapLibre's bundled CSS sets
+          `.maplibregl-map { position: relative }`, which loads after Tailwind
+          and overrides `absolute`. With `position: relative`, `inset-0` is a
+          no-op and the container collapses to 0×0 — MapLibre then renders
+          into a 300px default canvas that the parent clips to nothing.
+          Inline styles beat any stylesheet regardless of cascade order. */}
+      <div
+        ref={containerRef}
+        style={{ position: 'absolute', inset: 0 }}
+      />
 
       {/* Tile label — italic Fraunces, top-left, drop shadow for readability. */}
       <div

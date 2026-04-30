@@ -156,14 +156,41 @@ export async function POST(request: Request, { params }: PageProps) {
       .toBuffer()
 
     const supabaseService = createSupabaseServiceClient()
-    const { error: uploadErr } = await supabaseService.storage
+    const objectPath = `${substrateHash}.png`
+    const { data: uploadData, error: uploadErr } = await supabaseService.storage
       .from(RENDERED_BUCKET)
-      .upload(`${substrateHash}.png`, png, {
+      .upload(objectPath, png, {
         contentType: 'image/png',
         upsert: true,
       })
     if (uploadErr) {
       throw new Error(`Storage upload failed: ${uploadErr.message}`)
+    }
+    // Verify the upload actually landed. Supabase's upload() has been
+    // observed returning a non-error response when the object isn't
+    // actually written (cause unknown — possibly bucket / path edge cases).
+    // Read it back immediately and assert the byte count matches what we
+    // sent. If it doesn't, surface a real error instead of writing a
+    // renderUrl that 404s.
+    console.log(
+      `[POST events] upload returned: bucket=${RENDERED_BUCKET} ` +
+        `path=${objectPath} size=${png.byteLength} uploadData=${JSON.stringify(uploadData)}`,
+    )
+    const { data: verifyBlob, error: verifyErr } = await supabaseService.storage
+      .from(RENDERED_BUCKET)
+      .download(objectPath)
+    if (verifyErr || !verifyBlob) {
+      throw new Error(
+        `Storage upload verify failed: bucket=${RENDERED_BUCKET} path=${objectPath} ` +
+          `error=${verifyErr?.message ?? 'no data returned'}`,
+      )
+    }
+    const verifySize = verifyBlob.size
+    if (verifySize !== png.byteLength) {
+      throw new Error(
+        `Storage upload size mismatch: uploaded ${png.byteLength} bytes, ` +
+          `verified ${verifySize} bytes at ${RENDERED_BUCKET}/${objectPath}`,
+      )
     }
   } catch (err) {
     renderError = err instanceof Error ? err.message : String(err)
