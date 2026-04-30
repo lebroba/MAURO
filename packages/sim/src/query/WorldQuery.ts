@@ -107,11 +107,17 @@ export class WorldQuery {
     const world = await this.fetchWorld(worldId)
     if (!world) throw new WorldNotFoundError(worldId)
 
-    if (asOfDate < world.createdAt.slice(0, 10)) {
+    const events = await this.fetchEvents(worldId, asOfDate)
+
+    // "World not yet created" = no events exist on or before asOfDate.
+    // This is the correct check — comparing asOfDate against world.createdAt
+    // is wrong because asOfDate is the IN-WORLD fantasy date (e.g.
+    // '1247-01-01') and createdAt is the wall-clock timestamp the row was
+    // inserted (e.g. '2026-04-30'). They live in different calendars; a
+    // lexical comparison always says fantasy-year < real-year.
+    if (events.length === 0) {
       throw new WorldNotYetCreatedError(worldId, asOfDate, world.createdAt)
     }
-
-    const events = await this.fetchEvents(worldId, asOfDate)
 
     const { metadata: tileMeta, fresh: state } = await this.tileLoader.load(
       world.tileSlug,
