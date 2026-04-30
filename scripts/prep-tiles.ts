@@ -443,12 +443,25 @@ async function processTile(entry: TileEntry): Promise<ProcessResult> {
   const fileChecksum = await computeSourcesChecksum(sourcePaths)
 
   // Compute the substrate hash for the WORLD-CREATED state (no events
-  // applied yet). This is what WorldQuery returns as substrateHash for any
-  // newly-created world before its first GeographyMutation event. Future
-  // event-mutated states get their own hashes computed at write-time
-  // (Item 8). The world detail page can build its initial render URL from
-  // this hash without running the full WorldQuery replay.
-  const substrateHash = sha256OfHeightmap(heightmap)
+  // applied yet) the SAME WAY WorldQuery's TileLoader computes it at read
+  // time: read the on-disk heightmap.png bytes we're about to upload,
+  // decode through sharp.toColourspace('grey16').raw({ depth: 'ushort' })
+  // — byte-identical to TileLoader.fetchAndCache() — and hash the decoded
+  // Uint16Array. Hashing the pre-encode bytes diverges from TileLoader's
+  // post-decode hash because sharp's grey16 → PNG → grey16 round-trip
+  // isn't bit-identical to the input. Using the same PNG buffer Storage
+  // serves guarantees the read-side hash matches.
+  const heightmapPngBuf = await readFile(path.join(outDir, 'heightmap.png'))
+  const heightmapDecoded = await sharp(heightmapPngBuf)
+    .toColourspace('grey16')
+    .raw({ depth: 'ushort' })
+    .toBuffer({ resolveWithObject: true })
+  const roundTrippedHeightmap = new Uint16Array(
+    heightmapDecoded.data.buffer,
+    heightmapDecoded.data.byteOffset,
+    heightmapDecoded.data.byteLength / 2,
+  )
+  const substrateHash = sha256OfHeightmap(roundTrippedHeightmap)
 
   const tileMeta: TileMetadata = {
     slug: entry.slug,
@@ -466,11 +479,10 @@ async function processTile(entry: TileEntry): Promise<ProcessResult> {
   // Upload to Supabase Storage so MapLibre + the /api/render route can fetch.
   if (SHOULD_UPLOAD) {
     const supabase = getSupabase()
-    const heightmapBuf = await readFile(path.join(outDir, 'heightmap.png'))
     const maskBuf = await readFile(path.join(outDir, 'mask.png'))
     const hillshadeBuf = await readFile(path.join(outDir, 'hillshade.png'))
 
-    await uploadObject(supabase, TILES_BUCKET, `${entry.slug}/heightmap.png`, heightmapBuf, 'image/png')
+    await uploadObject(supabase, TILES_BUCKET, `${entry.slug}/heightmap.png`, heightmapPngBuf, 'image/png')
     await uploadObject(supabase, TILES_BUCKET, `${entry.slug}/mask.png`, maskBuf, 'image/png')
     await uploadObject(supabase, TILES_BUCKET, `${entry.slug}/tile.json`, Buffer.from(tileJsonStr, 'utf8'), 'application/json')
     await uploadObject(supabase, RENDERED_BUCKET, `${substrateHash}.png`, hillshadeBuf, 'image/png')
