@@ -57,6 +57,32 @@ interface WarpCombo {
   caption: string
 }
 
+interface AtlasItem {
+  slug: string
+  label: string
+}
+
+// Same four combos shown above, here in atlas-tinted form. Order is
+// chosen so the strongest visual (warped Mars) closes the section.
+const ATLAS_ITEMS: AtlasItem[] = [
+  {
+    slug: 'earth-pamirs-x-earth-patagonia',
+    label: 'Pamir + Patagonia',
+  },
+  {
+    slug: 'earth-pamirs-x-earth-patagonia-warped',
+    label: 'Pamir + Patagonia, shape-modified',
+  },
+  {
+    slug: 'earth-pamirs-x-mars-tharsis',
+    label: 'Pamir + Mars Tharsis',
+  },
+  {
+    slug: 'earth-pamirs-x-mars-tharsis-warped',
+    label: 'Pamir + Mars Tharsis, shape-modified',
+  },
+]
+
 const WARP_COMBOS: WarpCombo[] = [
   {
     slug: 'earth-pamirs-x-mars-tharsis-warped',
@@ -162,6 +188,34 @@ export default function StitchPocPage() {
           ))}
         </div>
 
+        {/* Section break — atlas-style coloring */}
+        <div className="mt-24 mb-12">
+          <div className="border-hairline border-t" />
+          <div className="label-caps mt-12 mb-3 flex items-center gap-3">
+            <span className="bg-stamp h-1.5 w-1.5 rounded-full" />
+            As atlas pages
+          </div>
+          <h2 className="font-display mb-5 text-4xl leading-tight md:text-5xl">
+            The same continents,
+            <br />
+            <em className="text-stamp">colored.</em>
+          </h2>
+          <p className="text-ink font-serif max-w-2xl text-base leading-relaxed">
+            What you&rsquo;ve seen so far is grayscale relief shading — the
+            output a 1985 USGS topographic survey would produce. Below are
+            the same four continents, treated with the kind of color scheme
+            you&rsquo;d see in a National Geographic atlas: blues for water,
+            greens for lowlands, tans and browns for mountains, snow on the
+            peaks. Same source data, same pipeline. Different rendering.
+          </p>
+        </div>
+
+        <div className="space-y-12">
+          {ATLAS_ITEMS.map((item) => (
+            <AtlasPanel key={item.slug} item={item} />
+          ))}
+        </div>
+
         {/* Closing note — what this is, what it isn't */}
         <div className="border-hairline mt-20 border-t pt-8">
           <p className="text-muted font-serif text-sm italic leading-relaxed">
@@ -174,6 +228,24 @@ export default function StitchPocPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+function AtlasPanel({ item }: { item: AtlasItem }) {
+  const colored = `${STORAGE_PUBLIC}/${item.slug}/colored_web.jpg`
+  return (
+    <section>
+      <div className="label-caps mb-2">{item.label}</div>
+      <div className="border-hairline overflow-hidden border bg-black">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={colored}
+          alt={`Atlas-tinted render of ${item.label}.`}
+          loading="lazy"
+          className="block h-auto w-full"
+        />
+      </div>
+    </section>
   )
 }
 

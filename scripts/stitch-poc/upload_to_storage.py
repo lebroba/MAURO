@@ -92,7 +92,7 @@ def main() -> int:
         print(f"No stitched output at {src_dir}", file=sys.stderr)
         return 1
 
-    files = ["comparison.png", "hillshade.png"]
+    files = ["comparison.png", "hillshade.png", "colored.png"]
     print(f"Uploading {combo}/ to {BUCKET}/{PREFIX}/{combo}/")
     for fname in files:
         local = src_dir / fname
