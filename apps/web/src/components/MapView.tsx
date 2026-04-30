@@ -38,7 +38,10 @@ export function MapView({ imageUrl, coordsLabel, tileLabel }: MapViewProps) {
             paint: { 'background-color': '#1a1816' },
           },
         ],
-        glyphs: undefined,
+        // glyphs intentionally omitted — we don't render any text labels.
+        // Setting it to undefined explicitly fails MapLibre's style validator
+        // ("string expected, undefined found"); the field must be either a
+        // valid URL string or absent.
       },
       center: [0, 0],
       zoom: 1,
