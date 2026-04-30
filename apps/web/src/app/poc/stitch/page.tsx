@@ -3,20 +3,17 @@ import type { Metadata } from 'next'
 
 // /poc/stitch — public proof-of-concept page.
 //
-// Shows the two stitch-poc outputs (Earth+Earth and Earth+Mars combos)
-// with captions explaining what's actually happening. Sharable link for
-// early GM feedback. Public — no auth gate, no DB reads, no Supabase
-// session. Just static images served from the public tiles-rendered
+// Sharable link for early GM feedback. Public — no auth gate, no DB
+// reads. Just static images served from the public tiles-rendered
 // bucket and a few paragraphs of copy.
 //
-// The full-resolution PNGs are 11-21 MB each; the web JPEGs are ~1 MB
-// half-res versions used inline. Full PNG linked for anyone who wants
-// to inspect detail.
+// Copy is pitched at a TTRPG GM, not an engineer — algorithm names and
+// implementation specifics live in the README, not here.
 
 export const metadata: Metadata = {
   title: 'Stitched worlds · MAURO',
   description:
-    'Real-Earth and Mars heightmaps stitched into single continents. Methodology proof for a multi-tile world assembler.',
+    'Real-Earth and Mars heightmaps stitched into single continents. An early look at how MAURO builds worlds.',
 }
 
 const STORAGE_PUBLIC =
@@ -33,27 +30,24 @@ const COMBOS: Combo[] = [
   {
     slug: 'earth-pamirs-x-earth-patagonia',
     title: 'Pamir massif + Patagonian fjords',
-    archetype: 'Tectonic Colossus + Linear Barrier',
+    archetype: 'Earth + Earth',
     caption:
-      'Two real-Earth tiles. The dense alpine massif on the left transitions ' +
-      'into deeply incised glacial valleys on the right. There is no straight ' +
-      'seam — the algorithm finds an organic path through the overlap zone ' +
-      'where the two heightmaps already agree, then blends the rest at multiple ' +
-      'frequency bands so low-frequency elevation transitions span a wide buffer ' +
-      'while local detail is preserved sharply.',
+      'Two real heightmaps from Earth — the Pamir massif on the left, ' +
+      'the Patagonian fjords on the right — joined into a single continent. ' +
+      'A dense alpine spine becomes a glacier-cut coast without a visible ' +
+      'seam between the two source regions.',
   },
   {
     slug: 'earth-pamirs-x-mars-tharsis',
     title: 'Pamir massif + Tharsis Montes',
-    archetype: 'Tectonic Colossus + Volcanic Extreme',
+    archetype: 'Earth + Mars',
     caption:
-      'Earth on the left, Mars on the right. Olympus Mons reaches 21 km above ' +
-      'the Mars datum — three times Everest — but histogram matching against ' +
-      'the Earth reference compresses the elevation distribution to credible ' +
-      "scale while preserving the volcanic geometry. The shield's radial flanks " +
-      'and caldera survive; only the absolute heights are remapped. The result ' +
-      'reads as one continent that has both alpine and volcanic character — the ' +
-      '"alien geometry preserved as fantasy substrate" thesis MAURO is built on.',
+      'Earth on the left, Mars on the right. Olympus Mons is roughly ' +
+      'three times taller than Everest in the raw data, so it gets ' +
+      'compressed to a believable Earth-scale before stitching — but ' +
+      'the volcanic shape is preserved. The result is one continent ' +
+      'that has both alpine and volcanic character. This is the move: ' +
+      "alien geometry as fantasy substrate, no magic-system explanation needed.",
   },
 ]
 
@@ -66,29 +60,26 @@ interface WarpCombo {
 const WARP_COMBOS: WarpCombo[] = [
   {
     slug: 'earth-pamirs-x-mars-tharsis-warped',
-    title: 'Same data, shape-modified',
+    title: 'Same data, no longer recognizable',
     caption:
-      'Same Pamir + Tharsis source as above. Top: original stitched output — ' +
-      'Olympus Mons is recognizably itself, Pamirs ridges run east-west like ' +
-      'the real range. Bottom: each source tile gets a random rigid transform ' +
-      '(mirror + 90° rotation) before stitching, then the entire blended ' +
-      'canvas is fractal-domain-warped at 50-pixel amplitude. Coastlines bend, ' +
-      "ridge orientations rotate, the volcano's radial flanks distort into " +
-      'asymmetric ridges. The seam is still invisible — the warp crosses it ' +
-      'and distorts both halves coherently. The result no longer matches any ' +
-      'specific Earth or Mars feature; it reads as a place that exists nowhere.',
+      'Same Pamir + Mars source as above. Top: original stitched output ' +
+      'where Olympus Mons is recognizably itself and the Pamir ridges run ' +
+      "the way the real range runs. Bottom: each source tile is mirrored " +
+      'and rotated before stitching, then the whole canvas is bent through ' +
+      "a smooth distortion field. The volcano's symmetry breaks; ridge " +
+      "lines turn the wrong direction. The result no longer matches any " +
+      'specific real place — it reads as somewhere new.',
   },
   {
     slug: 'earth-pamirs-x-earth-patagonia-warped',
     title: 'Earth + Earth, no longer Earth',
     caption:
-      "Same Pamir + Patagonia source. The fjord coast that's so distinctively " +
-      'Patagonian — long horizontal valleys cutting in from the west — survives ' +
-      "the unwarped pipeline as itself. After mirror, 180° rotation, and warp, " +
-      'those valleys become organic inlets bent into shapes that don\'t match ' +
-      'any real glacier system. This is the cheap fix to "everything generated ' +
-      'looks recognizably Earth": apply a controlled distortion field as the ' +
-      'last step before render.',
+      "Same Pamir + Patagonia source. The fjord coast that's so " +
+      "distinctively Patagonian — those long horizontal valleys cutting " +
+      'in from the west — survives the unmodified pipeline as itself. ' +
+      'Once mirroring, rotation, and distortion are applied, those ' +
+      "valleys become organic inlets bent into shapes that don't match " +
+      'any real glacier system.',
   },
 ]
 
@@ -102,10 +93,10 @@ export default function StitchPocPage() {
             MAURO
           </Link>
           <span className="text-muted">▸</span>
-          <span className="text-ink">Stitched worlds · POC</span>
+          <span className="text-ink">Stitched worlds · early look</span>
         </div>
         <div className="font-mono text-muted text-[0.65rem] tabular-nums">
-          2026-04-30 · methodology validation
+          2026-04-30
         </div>
       </div>
 
@@ -113,7 +104,7 @@ export default function StitchPocPage() {
         {/* Hero */}
         <div className="label-caps mb-7 flex items-center gap-3">
           <span className="bg-stamp h-1.5 w-1.5 rounded-full" />
-          MAURO &middot; proof-of-concept &middot; 2026-04-30
+          MAURO &middot; early look
         </div>
         <h1 className="font-display mb-6 text-5xl leading-[1.05] md:text-6xl">
           Worlds stitched from
@@ -121,17 +112,17 @@ export default function StitchPocPage() {
           <em className="text-stamp">real planets.</em>
         </h1>
         <p className="text-ink font-serif mb-8 max-w-2xl text-lg leading-relaxed">
-          Two heightmaps from NASA SRTM (Earth) and MOLA (Mars) data, blended
-          algorithmically into single continents. No hand-painting. No
-          generative AI. Every elevation value is something a satellite measured.
+          Heightmaps from real satellite measurements of Earth and Mars,
+          joined into single continents. No hand-painted maps. No image
+          generators. Every elevation value is something a satellite
+          actually saw.
         </p>
         <p className="font-serif text-muted mb-12 max-w-2xl text-base italic leading-relaxed">
-          What you should react to: the seams. They aren&rsquo;t there. A min-cost
-          dynamic-programming path finds the route through the overlap zone where
-          two source tiles already agree, then a Burt &amp; Adelson Laplacian-pyramid
-          blend feathers each frequency band at the seam-appropriate width.
-          Histogram matching closes the planet-scale gap so Mars&rsquo;s 21 km of vertical
-          range fits Earth&rsquo;s 9 km without losing geometric character.
+          What you should react to: the seam between two source regions
+          should be a straight vertical line — but it isn&rsquo;t. The
+          algorithm finds an organic path through where the two
+          heightmaps already happen to agree, then blends across that
+          path. The output reads as one continent.
         </p>
 
         {/* Combos — original stitched */}
@@ -146,26 +137,22 @@ export default function StitchPocPage() {
           <div className="border-hairline border-t" />
           <div className="label-caps mt-12 mb-3 flex items-center gap-3">
             <span className="bg-verdigris h-1.5 w-1.5 rounded-full" />
-            Modifying continent shapes
+            Breaking the resemblance
           </div>
           <h2 className="font-display mb-5 text-4xl leading-tight md:text-5xl">
             Same data,
             <br />
             <em className="text-verdigris">unrecognizable continents.</em>
           </h2>
-          <p className="text-ink font-serif mb-2 max-w-2xl text-base leading-relaxed">
-            Real-Earth tiles still look like Earth even when stitched. To break
-            that recognition, two cheap layers run AFTER the blend: per-tile
-            random rigid transforms (mirror + 90° rotation) eliminate strong
-            orientation cues, then a fractal domain-warp on the stitched canvas
-            bends every coastline through a multi-octave noise field. The result
-            preserves geological character — alpine massifs are still alpine,
-            volcanic shields still read as volcanic — but the SHAPES no longer
+          <p className="text-ink font-serif max-w-2xl text-base leading-relaxed">
+            Real-Earth tiles still look like Earth even when they&rsquo;re
+            stitched together. To break that recognition, two cheap
+            steps run after the stitch: each source tile is randomly
+            mirrored and rotated, then the whole continent is bent
+            through a smooth distortion field. Geological character
+            survives — alpine ranges still read as alpine, volcanic
+            shields still read as volcanic — but the shapes no longer
             match any specific real place.
-          </p>
-          <p className="font-serif text-muted max-w-2xl text-sm italic leading-relaxed">
-            The warp crosses the tile seam, which has the side effect of
-            hiding the seam even more completely. Roughly 80 lines of numpy.
           </p>
         </div>
 
@@ -175,24 +162,14 @@ export default function StitchPocPage() {
           ))}
         </div>
 
-        {/* Footer note */}
+        {/* Closing note — what this is, what it isn't */}
         <div className="border-hairline mt-20 border-t pt-8">
-          <div className="label-caps mb-3">Method, in one paragraph</div>
-          <p className="text-muted font-serif text-sm leading-relaxed">
-            For each tile, remap elevations through the cumulative-distribution-function
-            of an Earth reference (Mars and Moon get rescaled invisibly to Earth-credible).
-            Place tiles on a canvas with 20% horizontal overlap. Find the minimum-cost
-            vertical seam through the overlap region, where cost at each pixel is
-            <code className="font-mono text-ink mx-1 not-italic">|h_a − h_b|</code>.
-            Blend along that seam via a 6-level Laplacian pyramid (Burt &amp; Adelson 1983),
-            so low frequencies blend smoothly across a wide buffer and high frequencies
-            blend sharply at the seam itself. Run a final histogram match for global
-            coherence. Render hillshade via Horn&rsquo;s method.
-          </p>
-          <p className="font-mono text-muted mt-4 text-xs leading-relaxed">
-            Implementation: ~500 lines of Python (numpy, scipy, Pillow). No ML.
-            Source: <span className="text-ink">scripts/stitch-poc/</span> on
-            github.com/lebroba/MAURO.
+          <p className="text-muted font-serif text-sm italic leading-relaxed">
+            This page is a methodology preview, not the product. The
+            actual MAURO workspace lets you build campaign worlds on
+            top of substrates like these — nations, factions, a
+            time-versioned ledger of everything that&rsquo;s happened
+            since the world was made. That&rsquo;s the next milestone.
           </p>
         </div>
       </div>
@@ -202,7 +179,6 @@ export default function StitchPocPage() {
 
 function WarpPanel({ combo }: { combo: WarpCombo }) {
   const webImg = `${STORAGE_PUBLIC}/${combo.slug}/comparison_web.jpg`
-  const fullPng = `${STORAGE_PUBLIC}/${combo.slug}/comparison.png`
   return (
     <section>
       <h3 className="font-display mb-4 text-2xl leading-tight md:text-3xl">
@@ -215,21 +191,10 @@ function WarpPanel({ combo }: { combo: WarpCombo }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={webImg}
-          alt={`Before/after sheet: ${combo.title} — original stitched on top, shape-modified on bottom.`}
+          alt={`Before/after: ${combo.title} — original stitched on top, shape-modified on bottom.`}
           loading="lazy"
           className="block h-auto w-full"
         />
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
-        <a
-          href={fullPng}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-mono text-muted hover:text-ink underline transition-colors"
-        >
-          Full-resolution PNG →
-        </a>
-        <span className="text-muted font-mono text-[0.7rem]">{combo.slug}</span>
       </div>
     </section>
   )
@@ -237,7 +202,6 @@ function WarpPanel({ combo }: { combo: WarpCombo }) {
 
 function ComboPanel({ combo }: { combo: Combo }) {
   const webImg = `${STORAGE_PUBLIC}/${combo.slug}/comparison_web.jpg`
-  const fullPng = `${STORAGE_PUBLIC}/${combo.slug}/comparison.png`
   return (
     <section>
       <div className="label-caps mb-2">{combo.archetype}</div>
@@ -248,30 +212,13 @@ function ComboPanel({ combo }: { combo: Combo }) {
         {combo.caption}
       </p>
       <div className="border-hairline overflow-hidden border bg-black">
-        {/* Plain img tag (not next/image) — these are direct Supabase URLs
-            and we don't want to fight the Image-loader remote-host config
-            for a one-off POC page. The web JPEGs are ~1 MB; loading="lazy"
-            keeps the second combo from blocking the first paint. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={webImg}
-          alt={`Comparison sheet: ${combo.title} — originals on top, stitched output on bottom.`}
+          alt={`Comparison: ${combo.title} — originals on top, stitched on bottom.`}
           loading="lazy"
           className="block h-auto w-full"
         />
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
-        <a
-          href={fullPng}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-mono text-muted hover:text-ink underline transition-colors"
-        >
-          Full-resolution PNG (~20 MB) →
-        </a>
-        <span className="text-muted font-mono text-[0.7rem]">
-          {combo.slug}
-        </span>
       </div>
     </section>
   )
