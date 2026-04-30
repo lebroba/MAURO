@@ -31,11 +31,14 @@ test('GET /worlds/<random-id> (signed out) redirects to sign-in', async ({ page 
   // behavior is covered separately when we add the signed-in fixture.
 })
 
-test('POST /api/worlds (no body) returns 400 invalid json', async ({ request }) => {
+test('POST /api/worlds (no auth, no body) returns 401 — auth checked before body', async ({ request }) => {
+  // Auth must precede body validation so unauthenticated callers can't probe
+  // input handling. With no session cookie, the response is 401 regardless of
+  // whether the body is valid JSON.
   const res = await request.post('/api/worlds')
-  expect(res.status()).toBe(400)
+  expect(res.status()).toBe(401)
   const body = await res.json()
-  expect(body.error).toBe('invalid json')
+  expect(body.error).toBe('unauthenticated')
 })
 
 test('POST /api/worlds (no auth, valid shape) returns 401', async ({ request }) => {

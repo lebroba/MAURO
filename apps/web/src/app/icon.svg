@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Brand mark: the stamp-red period that punctuates "Mauro." in the
+       wordmark. Single dot, warm-paper background — the simplest possible
+       expression of the brand per DESIGN.md. -->
+  <rect width="32" height="32" fill="#1a1816"/>
+  <circle cx="16" cy="16" r="5" fill="#B8442C"/>
+</svg>

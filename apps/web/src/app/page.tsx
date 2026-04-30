@@ -69,7 +69,7 @@ function SignedIn({ email, worlds }: { email: string; worlds: WorldRow[] }) {
             <li key={w.id}>
               <Link
                 href={`/worlds/${w.id}`}
-                className="hover:bg-bg block px-4 py-3 text-left transition-colors"
+                className="hover:bg-surface block px-4 py-3 text-left transition-colors"
               >
                 <div className="font-display text-ink text-lg leading-tight">
                   {w.name}

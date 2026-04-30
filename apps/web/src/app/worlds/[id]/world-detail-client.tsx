@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { MapView } from '@/components/MapView'
@@ -63,6 +63,22 @@ export function WorldDetailClient({
   )
   const [triggering, setTriggering] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // After router.refresh() following a new event, the snapshots prop grows
+  // but useState's initializer doesn't re-run — the scrubber would stay on
+  // the old date. Auto-advance to the newest snapshot whenever the count
+  // increases. We never auto-rewind: if the user has dragged backward, a
+  // future feature like "undo last event" would shrink snapshots and we
+  // shouldn't fight their selection.
+  const snapshotCount = snapshots.length
+  useEffect(() => {
+    setSelectedIndex((prev) => {
+      if (snapshotCount === 0) return -1
+      if (prev >= snapshotCount) return snapshotCount - 1
+      // Only advance if the new latest is strictly newer than where we are.
+      return prev < snapshotCount - 1 ? snapshotCount - 1 : prev
+    })
+  }, [snapshotCount])
 
   const stops: ScrubberStop[] = snapshots.map((s, i) => ({
     position: snapshots.length > 1 ? i / (snapshots.length - 1) : 0,
