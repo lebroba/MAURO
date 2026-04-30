@@ -80,10 +80,20 @@ export class SupabaseTileLoader implements TileLoader {
       new TextDecoder().decode(metadataBlob),
     ) as TileMetadata
 
-    // Decode 16-bit grayscale PNG. sharp's raw output is little-endian by
-    // default on x86; we reinterpret the byte buffer as Uint16Array.
+    // Decode 16-bit grayscale PNG. CRITICAL: pass `depth: 'ushort'` to .raw()
+    // — without it sharp's default pipeline converts 16-bit PNG to 8-bit
+    // RGB(A) on output, and the Uint16Array we reinterpret from the bytes
+    // contains values entirely unrelated to the original elevation data.
+    // That breaks the determinism contract: prep-tiles' hash (computed on
+    // the original Uint16Array before encoding) doesn't match WorldQuery's
+    // hash (computed on this corrupted typed array), so /api/render/{hash}.png
+    // 404s for every world.
+    //
+    // We also force grey16 colourspace to avoid sharp inserting an alpha
+    // channel or otherwise re-interpreting the data.
     const heightmapDecoded = await sharp(Buffer.from(heightmapBlob))
-      .raw()
+      .toColourspace('grey16')
+      .raw({ depth: 'ushort' })
       .toBuffer({ resolveWithObject: true })
     const heightmapTemplate = new Uint16Array(
       heightmapDecoded.data.buffer,
@@ -91,10 +101,12 @@ export class SupabaseTileLoader implements TileLoader {
       heightmapDecoded.data.byteLength / 2,
     )
 
+    // Mask is 8-bit; byte buffer is the data. Force greyscale 8-bit to be
+    // explicit about not getting RGB back.
     const maskDecoded = await sharp(Buffer.from(maskBlob))
+      .toColourspace('b-w')
       .raw()
       .toBuffer({ resolveWithObject: true })
-    // Mask is 8-bit; byte buffer is the data.
     const maskTemplate = new Uint8Array(
       maskDecoded.data.buffer,
       maskDecoded.data.byteOffset,
