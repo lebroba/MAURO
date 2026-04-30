@@ -13,6 +13,7 @@ export {
   WorldQuery,
   WorldNotFoundError,
   WorldNotYetCreatedError,
+  type WorldReplay,
 } from './query/WorldQuery'
 export {
   worldQueryForUser,

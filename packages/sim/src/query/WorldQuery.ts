@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   EventRow,
   SubstrateState,
+  TileMetadata,
   TileSlug,
   World,
   WorldEvent,
@@ -51,6 +52,26 @@ export class WorldNotYetCreatedError extends Error {
   }
 }
 
+/**
+ * Full result of a replay — includes the post-replay substrate state and
+ * tile metadata. Returned by `replayAsOf()` for callers that need to
+ * render a hillshade or otherwise consume the substrate (e.g. the
+ * write-time render path that takes the new state and produces a PNG).
+ *
+ * `getWorldAsOf()` returns a smaller `WorldSnapshot` for callers that
+ * only need the substrate hash + render URL.
+ */
+export interface WorldReplay {
+  worldId: string
+  asOfDate: string
+  tileSlug: TileSlug
+  tileMeta: TileMetadata
+  /** Post-replay substrate. Heightmap is mutated; mask is unchanged. */
+  state: SubstrateState
+  substrateHash: string
+  appliedEventCount: number
+}
+
 export class WorldQuery {
   constructor(
     private readonly db: SupabaseClient,
@@ -59,12 +80,30 @@ export class WorldQuery {
 
   /**
    * Fetch + replay a world up to `asOfDate`, returning a snapshot with the
-   * substrate hash and a render URL. Pure read operation.
+   * substrate hash and a render URL. Pure read operation. Use this when
+   * you only need the URL — e.g. on the world detail page.
    *
    * Throws WorldNotFoundError if the world doesn't exist or RLS hides it.
    * Throws WorldNotYetCreatedError if asOfDate is before the world's creation.
    */
   async getWorldAsOf(worldId: string, asOfDate: string): Promise<WorldSnapshot> {
+    const replay = await this.replayAsOf(worldId, asOfDate)
+    return {
+      worldId: replay.worldId,
+      asOfDate: replay.asOfDate,
+      tileSlug: replay.tileSlug,
+      substrateHash: replay.substrateHash,
+      renderUrl: `/api/render/${replay.substrateHash}.png`,
+      appliedEventCount: replay.appliedEventCount,
+    }
+  }
+
+  /**
+   * Like `getWorldAsOf()` but also exposes the post-replay substrate state +
+   * tile metadata. Use this when you need to render or further mutate the
+   * state (e.g. the write-time render path in /api/worlds/[id]/events).
+   */
+  async replayAsOf(worldId: string, asOfDate: string): Promise<WorldReplay> {
     const world = await this.fetchWorld(worldId)
     if (!world) throw new WorldNotFoundError(worldId)
 
@@ -94,8 +133,9 @@ export class WorldQuery {
       worldId,
       asOfDate,
       tileSlug: world.tileSlug,
+      tileMeta,
+      state,
       substrateHash,
-      renderUrl: `/api/render/${substrateHash}.png`,
       appliedEventCount,
     }
   }
