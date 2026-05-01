@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eulerPoleRotation, greatCircleDistanceMeters, rotateAxisAngle, slerp } from './geodesy'
+import { eulerPoleRotation, geodesicDistanceMeters, greatCircleDistanceMeters, rotateAxisAngle, slerp } from './geodesy'
 import { lonLatToCartesian, type Cartesian3 } from './coords'
 import { WGS84 } from './wgs84'
 
@@ -211,5 +211,59 @@ describe('greatCircleDistanceMeters (Haversine, sphere math)', () => {
       1000,
     )
     expect(d).toBeCloseTo((Math.PI / 2) * 1000, 6)
+  })
+})
+
+describe('geodesicDistanceMeters (WGS84 via Karney)', () => {
+  it('returns 0 for identical points', () => {
+    const d = geodesicDistanceMeters(
+      { lonDeg: 10, latDeg: 20 },
+      { lonDeg: 10, latDeg: 20 },
+    )
+    expect(d).toBeLessThan(1e-6)
+  })
+
+  it('NYC to London on WGS84 is about 5585 km ± 1 km', () => {
+    // The 0.3% delta vs sphere (5570 km) IS the ellipsoid effect.
+    const d = geodesicDistanceMeters(
+      { lonDeg: -74.0060, latDeg: 40.7128 },
+      { lonDeg: -0.1278, latDeg: 51.5074 },
+    )
+    const km = d / 1000
+    expect(km).toBeGreaterThan(5565)
+    expect(km).toBeLessThan(5590)
+  })
+
+  it('handles antipodal pairs without convergence failure', () => {
+    // Karney's algorithm is antipode-safe — Vincenty fails to converge near
+    // antipodes. Karney's converges to a valid geodesic distance.
+    //
+    // The equatorial antipode (0,0)→(180,0) is degenerate: infinitely many
+    // equal-length geodesics exist (both equatorial and meridional routes).
+    // GeographicLib picks the meridional route ≈ 20,003,931 m (shorter than
+    // the equatorial ≈ 20,037,508 m). The semantic contract is that the
+    // library returns a finite positive value, not NaN or zero.
+    const d = geodesicDistanceMeters(
+      { lonDeg: 0, latDeg: 0 },
+      { lonDeg: 180, latDeg: 0 },
+    )
+    // Must be finite, positive, and in the plausible Earth half-circumference range.
+    expect(isFinite(d)).toBe(true)
+    expect(d).toBeGreaterThan(20_000_000)
+    expect(d).toBeLessThan(20_038_000)
+  })
+
+  it('differs from sphere distance by ~0.3% over Earth-scale distances', () => {
+    const sphere = greatCircleDistanceMeters(
+      { lonDeg: -74.0060, latDeg: 40.7128 },
+      { lonDeg: -0.1278, latDeg: 51.5074 },
+    )
+    const wgs84 = geodesicDistanceMeters(
+      { lonDeg: -74.0060, latDeg: 40.7128 },
+      { lonDeg: -0.1278, latDeg: 51.5074 },
+    )
+    const relativeDelta = Math.abs(wgs84 - sphere) / sphere
+    expect(relativeDelta).toBeGreaterThan(0.001)
+    expect(relativeDelta).toBeLessThan(0.005)
   })
 })

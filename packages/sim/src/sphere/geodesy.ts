@@ -16,6 +16,18 @@ import {
 import { add, cross, dot, lerp, normalize, scale } from './_vec'
 import { WGS84 } from './wgs84'
 
+// Karney's algorithm via geographiclib-geodesic. The library exports a
+// CommonJS-style namespace; we import the WGS84-preconfigured Geodesic
+// instance and call .Inverse(lat1, lon1, lat2, lon2) which returns
+// { s12: distance_meters, ... }.
+//
+// Note the parameter order: Geodesic uses (lat, lon) — not (lon, lat) —
+// matching geographic convention. Our LonLat type is (lon, lat) so we
+// pass them in the right order at the call site.
+import { Geodesic } from 'geographiclib-geodesic'
+
+const wgs84Geodesic = Geodesic.WGS84
+
 /**
  * Rotate a Cartesian3 about a unit axis by an angle (radians) using
  * Rodrigues' rotation formula. The axis must be a unit vector; pre-
@@ -160,4 +172,21 @@ export function greatCircleDistanceMeters(
   // 2 · asin(min(1, √h)) — clamp guards against float drift producing
   // h slightly > 1 for antipodal inputs.
   return 2 * radius * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+
+/**
+ * Geodesic distance between two LonLat points on the WGS84 ellipsoid,
+ * using Karney's algorithm (GeographicLib). Antipode-safe — Vincenty's
+ * earlier formulation fails to converge near antipodes; Karney's does
+ * not. ~0.3% more accurate than great-circle on a sphere over Earth-
+ * scale distances.
+ *
+ * Use for any user-facing "real-world" distance — kilometers on screen,
+ * resource-density area math, etc.
+ */
+export function geodesicDistanceMeters(a: LonLat, b: LonLat): number {
+  const result = wgs84Geodesic.Inverse(a.latDeg, a.lonDeg, b.latDeg, b.lonDeg)
+  // s12 is the distance in meters. The library guarantees it for the
+  // default 'a' caps; explicit nullish-coalesce in case of API drift.
+  return result.s12 ?? 0
 }
