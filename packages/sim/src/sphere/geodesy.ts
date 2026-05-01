@@ -14,6 +14,7 @@ import {
   type LonLat,
 } from './coords'
 import { add, cross, dot, lerp, normalize, scale } from './_vec'
+import { WGS84 } from './wgs84'
 
 /**
  * Rotate a Cartesian3 about a unit axis by an angle (radians) using
@@ -46,6 +47,7 @@ export function rotateAxisAngle(
   )
 }
 
+const DEG_TO_RAD = Math.PI / 180
 const EPSILON_SAME = 1e-10
 const EPSILON_ANTIPODAL = 1e-10
 
@@ -124,4 +126,38 @@ export function eulerPoleRotation(
   const axisCart = lonLatToCartesian(pole)
   const rotated = rotateAxisAngle(pCart, axisCart, angleRad)
   return cartesianToLonLat(rotated)
+}
+
+/**
+ * Great-circle distance between two LonLat points using the Haversine
+ * formula on a perfect sphere. Default `radius` is the WGS84 mean radius
+ * (6,371,008.8 m) — the standard "spherical Earth" approximation.
+ *
+ * Use for "is this within X of that" checks where ellipsoid precision
+ * doesn't matter. For Earth-correct precision (e.g., reporting kilometers
+ * to a user), use geodesicDistanceMeters which uses WGS84 via Karney.
+ *
+ * The Haversine form is numerically stable for all distances including
+ * antipodal — unlike the spherical law of cosines, which loses precision
+ * for short distances.
+ */
+export function greatCircleDistanceMeters(
+  a: LonLat,
+  b: LonLat,
+  radius: number = WGS84.MEAN_RADIUS_METERS,
+): number {
+  const lat1 = a.latDeg * DEG_TO_RAD
+  const lat2 = b.latDeg * DEG_TO_RAD
+  const dLat = lat2 - lat1
+  const dLon = (b.lonDeg - a.lonDeg) * DEG_TO_RAD
+
+  const sinHalfDLat = Math.sin(dLat / 2)
+  const sinHalfDLon = Math.sin(dLon / 2)
+  const h =
+    sinHalfDLat * sinHalfDLat +
+    Math.cos(lat1) * Math.cos(lat2) * sinHalfDLon * sinHalfDLon
+
+  // 2 · asin(min(1, √h)) — clamp guards against float drift producing
+  // h slightly > 1 for antipodal inputs.
+  return 2 * radius * Math.asin(Math.min(1, Math.sqrt(h)))
 }

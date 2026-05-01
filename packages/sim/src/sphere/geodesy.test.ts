@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { eulerPoleRotation, rotateAxisAngle, slerp } from './geodesy'
+import { eulerPoleRotation, greatCircleDistanceMeters, rotateAxisAngle, slerp } from './geodesy'
 import { lonLatToCartesian, type Cartesian3 } from './coords'
+import { WGS84 } from './wgs84'
 
 describe('rotateAxisAngle', () => {
   it('returns the input unchanged for angle 0', () => {
@@ -163,5 +164,52 @@ describe('eulerPoleRotation', () => {
 
     expect(p.lonDeg).toBeCloseTo(single.lonDeg, 7)
     expect(p.latDeg).toBeCloseTo(single.latDeg, 7)
+  })
+})
+
+describe('greatCircleDistanceMeters (Haversine, sphere math)', () => {
+  it('returns 0 for identical points', () => {
+    const d = greatCircleDistanceMeters(
+      { lonDeg: 10, latDeg: 20 },
+      { lonDeg: 10, latDeg: 20 },
+    )
+    expect(d).toBeLessThan(1e-6)
+  })
+
+  it('NYC to London is about 5570 km (sphere) ± 5 km', () => {
+    const d = greatCircleDistanceMeters(
+      { lonDeg: -74.0060, latDeg: 40.7128 },
+      { lonDeg: -0.1278, latDeg: 51.5074 },
+    )
+    const km = d / 1000
+    expect(km).toBeGreaterThan(5565)
+    expect(km).toBeLessThan(5575)
+  })
+
+  it('equator quarter-circle (0,0) → (90,0) is exactly π/2 · R', () => {
+    const d = greatCircleDistanceMeters(
+      { lonDeg: 0, latDeg: 0 },
+      { lonDeg: 90, latDeg: 0 },
+    )
+    const expected = (Math.PI / 2) * WGS84.MEAN_RADIUS_METERS
+    expect(d).toBeCloseTo(expected, 0)
+  })
+
+  it('antipodal pair distance equals π · R', () => {
+    const d = greatCircleDistanceMeters(
+      { lonDeg: 0, latDeg: 0 },
+      { lonDeg: 180, latDeg: 0 },
+    )
+    const expected = Math.PI * WGS84.MEAN_RADIUS_METERS
+    expect(d).toBeCloseTo(expected, 0)
+  })
+
+  it('respects custom radius parameter', () => {
+    const d = greatCircleDistanceMeters(
+      { lonDeg: 0, latDeg: 0 },
+      { lonDeg: 90, latDeg: 0 },
+      1000,
+    )
+    expect(d).toBeCloseTo((Math.PI / 2) * 1000, 6)
   })
 })
