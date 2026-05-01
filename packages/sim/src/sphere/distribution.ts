@@ -8,6 +8,7 @@ import { nextDouble } from './_rng'
 import type { LonLat } from './coords'
 import { greatCircleDistanceMeters } from './geodesy'
 import { WGS84 } from './wgs84'
+import { cellAreaSterad } from './area'
 
 /**
  * Sample a single point uniformly distributed on the unit sphere.
@@ -65,4 +66,27 @@ export function cosineWeightedPoisson(
   }
 
   return accepted
+}
+
+/**
+ * Generic reducer that visits each cell with its area-in-steradians
+ * weight. The combine function receives `(accumulator, value, weight)`.
+ * Used by climate, terrain analysis, and any consumer that needs cell-
+ * area awareness when summing/averaging over a global field.
+ *
+ * Each cell is assumed 1° × 1° at its `latDeg` for weight derivation.
+ * For non-uniform cell sizes, the consumer should compute weights itself
+ * and use a plain reduce.
+ */
+export function areaWeightedAccumulate<T>(
+  cells: Iterable<{ latDeg: number; value: T }>,
+  combine: (acc: T, value: T, weight: number) => T,
+  initial: T,
+): T {
+  let acc = initial
+  for (const cell of cells) {
+    const weight = cellAreaSterad(cell.latDeg, 1, 1)
+    acc = combine(acc, cell.value, weight)
+  }
+  return acc
 }

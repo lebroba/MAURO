@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { uniformOnSphere, cosineWeightedPoisson } from './distribution'
+import { uniformOnSphere, cosineWeightedPoisson, areaWeightedAccumulate } from './distribution'
 import { xoshiro256ss } from '../rng/xoshiro256'
 import { latitudeBand } from './area'
 import { greatCircleDistanceMeters } from './geodesy'
@@ -102,5 +102,55 @@ describe('cosineWeightedPoisson', () => {
     const elapsed = Date.now() - start
     expect(elapsed).toBeLessThan(2000)  // bounded — fail-budget worked
     expect(points.length).toBeLessThan(50)  // sparse result, that's fine
+  })
+})
+
+describe('areaWeightedAccumulate', () => {
+  it('weighted sum over a uniform global field equals the field value', () => {
+    const cells: Array<{ latDeg: number; value: number }> = []
+    for (let lat = -90; lat < 90; lat += 10) {
+      for (let lon = -180; lon < 180; lon += 10) {
+        cells.push({ latDeg: lat + 5, value: 5 })
+      }
+    }
+    const result = areaWeightedAccumulate(
+      cells,
+      (acc, value, weight) => ({
+        sum: acc.sum + value * weight,
+        weight: acc.weight + weight,
+      }),
+      { sum: 0, weight: 0 },
+    )
+    expect(result.sum / result.weight).toBeCloseTo(5, 12)
+  })
+
+  it('weighted sum biases toward equatorial cells (larger area)', () => {
+    const cells: Array<{ latDeg: number; value: number }> = []
+    for (let lat = -90; lat < 90; lat += 10) {
+      for (let lon = -180; lon < 180; lon += 10) {
+        const value = Math.abs(lat + 5) < 30 ? 10 : 0
+        cells.push({ latDeg: lat + 5, value })
+      }
+    }
+    const weighted = areaWeightedAccumulate(
+      cells,
+      (acc, v, w) => ({ sum: acc.sum + v * w, weight: acc.weight + w }),
+      { sum: 0, weight: 0 },
+    )
+    const meanWeighted = weighted.sum / weighted.weight
+
+    const unweighted = cells.reduce((s, c) => s + c.value, 0) / cells.length
+
+    expect(meanWeighted).toBeGreaterThan(unweighted)
+  })
+
+  it('returns the initial value for an empty input', () => {
+    const result = areaWeightedAccumulate(
+      [],
+      (acc) => acc,
+      { sum: 0, weight: 0 },
+    )
+    expect(result.sum).toBe(0)
+    expect(result.weight).toBe(0)
   })
 })
