@@ -7,7 +7,12 @@
 //     these have no meaningful ellipsoidal analog and are standard in
 //     geodynamic models.
 
-import type { Cartesian3 } from './coords'
+import {
+  cartesianToLonLat,
+  lonLatToCartesian,
+  type Cartesian3,
+  type LonLat,
+} from './coords'
 import { add, cross, dot, lerp, normalize, scale } from './_vec'
 
 /**
@@ -95,4 +100,28 @@ function perpendicularFallback(a: Cartesian3): Cartesian3 {
   const reference: Cartesian3 =
     Math.abs(a.x) > 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 }
   return normalize(cross(a, reference))
+}
+
+/**
+ * Rotate a LonLat point about an Euler pole (axis through the planet's
+ * center, defined by its surface lat/lon) by an angle in radians.
+ *
+ * Foundation primitive for plate tectonics (rule 10a). v1 plate-tectonics
+ * simulation calls this in a loop per cell per timestep — the geometry is
+ * here from day one so the simulation only needs to model plate state and
+ * integrate over time.
+ *
+ * Implementation: convert pole and point to unit-sphere Cartesian, apply
+ * Rodrigues' rotation, convert back. Composition is associative within
+ * float precision.
+ */
+export function eulerPoleRotation(
+  p: LonLat,
+  pole: LonLat,
+  angleRad: number,
+): LonLat {
+  const pCart = lonLatToCartesian(p)
+  const axisCart = lonLatToCartesian(pole)
+  const rotated = rotateAxisAngle(pCart, axisCart, angleRad)
+  return cartesianToLonLat(rotated)
 }

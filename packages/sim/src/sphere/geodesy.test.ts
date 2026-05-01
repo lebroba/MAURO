@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rotateAxisAngle, slerp } from './geodesy'
+import { eulerPoleRotation, rotateAxisAngle, slerp } from './geodesy'
 import { lonLatToCartesian, type Cartesian3 } from './coords'
 
 describe('rotateAxisAngle', () => {
@@ -120,5 +120,48 @@ describe('slerp', () => {
     expect(r0.x).toBeCloseTo(1, 12)
     // At t=1, full π rotation about a perpendicular axis brings us to -a.
     expect(r1.x).toBeCloseTo(-1, 10)
+  })
+})
+
+describe('eulerPoleRotation', () => {
+  it('rotates a point about the geographic north pole by the expected longitude', () => {
+    // Rotating (lon=0, lat=10) by π/2 about the north pole should produce (lon=90, lat=10).
+    const result = eulerPoleRotation(
+      { lonDeg: 0, latDeg: 10 },
+      { lonDeg: 0, latDeg: 90 }, // axis is the north pole
+      Math.PI / 2,
+    )
+    expect(result.lonDeg).toBeCloseTo(90, 9)
+    expect(result.latDeg).toBeCloseTo(10, 9)
+  })
+
+  it('returns the input position when the angle is 0', () => {
+    const input = { lonDeg: -73.5, latDeg: 40.7 }
+    const result = eulerPoleRotation(input, { lonDeg: 100, latDeg: -20 }, 0)
+    expect(result.lonDeg).toBeCloseTo(input.lonDeg, 9)
+    expect(result.latDeg).toBeCloseTo(input.latDeg, 9)
+  })
+
+  it('leaves a point on the rotation axis unchanged', () => {
+    // A point at the same position as the Euler pole has zero rotation arc.
+    const pole = { lonDeg: 30, latDeg: 50 }
+    const result = eulerPoleRotation(pole, pole, 1.234)
+    expect(result.lonDeg).toBeCloseTo(30, 9)
+    expect(result.latDeg).toBeCloseTo(50, 9)
+  })
+
+  it('composes 100 small rotations equivalently to one large one (associativity)', () => {
+    let p = { lonDeg: 5, latDeg: 15 }
+    const pole = { lonDeg: 60, latDeg: 30 }
+    const totalAngle = 1.0
+    const stepAngle = totalAngle / 100
+
+    for (let i = 0; i < 100; i++) {
+      p = eulerPoleRotation(p, pole, stepAngle)
+    }
+    const single = eulerPoleRotation({ lonDeg: 5, latDeg: 15 }, pole, totalAngle)
+
+    expect(p.lonDeg).toBeCloseTo(single.lonDeg, 7)
+    expect(p.latDeg).toBeCloseTo(single.latDeg, 7)
   })
 })
