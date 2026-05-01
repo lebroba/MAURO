@@ -1,3 +1,5 @@
+import { WGS84 } from './wgs84'
+
 // Coordinate types and conversions for the sphere substrate.
 //
 // Three coordinate frames coexist intentionally per the spec:
@@ -88,4 +90,98 @@ export function clampLat(deg: number): number {
   if (deg > 90) return 90
   if (deg < -90) return -90
   return deg
+}
+
+/**
+ * 3D Cartesian point in the WGS84 Earth-Centered, Earth-Fixed (ECEF) frame,
+ * meters from Earth center. Distinct from a unit-sphere Cartesian3 — same
+ * shape, different frame. Use for geodetic position, GIS interop, satellite
+ * computations.
+ */
+export interface ECEF {
+  x: number
+  y: number
+  z: number
+}
+
+/**
+ * Convert a geodetic LonLat (+ optional height in meters above the WGS84
+ * ellipsoid) to ECEF Cartesian. Frame: WGS84 ECEF, meters.
+ */
+export function lonLatToECEF(p: LonLat, heightMeters: number = 0): ECEF {
+  const lonRad = p.lonDeg * DEG_TO_RAD
+  const latRad = p.latDeg * DEG_TO_RAD
+  const sinLat = Math.sin(latRad)
+  const cosLat = Math.cos(latRad)
+  // Prime vertical radius of curvature.
+  const N = WGS84.A_METERS / Math.sqrt(1 - WGS84.E2 * sinLat * sinLat)
+  return {
+    x: (N + heightMeters) * cosLat * Math.cos(lonRad),
+    y: (N + heightMeters) * cosLat * Math.sin(lonRad),
+    z: (N * (1 - WGS84.E2) + heightMeters) * sinLat,
+  }
+}
+
+/**
+ * Convert ECEF Cartesian back to geodetic LonLat + height. Uses Bowring's
+ * iterative formula (1985 closed form) — converges to sub-millimeter
+ * precision in 2-3 iterations for any point inside the ellipsoid.
+ */
+export function ecefToLonLat(p: ECEF): { lonLat: LonLat; heightMeters: number } {
+  const lonRad = Math.atan2(p.y, p.x)
+
+  // Distance from Z axis (equatorial plane projection).
+  const r = Math.sqrt(p.x * p.x + p.y * p.y)
+
+  // Special-case the poles — atan2(z, r) is fine but height calc differs.
+  if (r < 1e-9) {
+    const sign = p.z >= 0 ? 1 : -1
+    return {
+      lonLat: { lonDeg: 0, latDeg: sign * 90 },
+      heightMeters: Math.abs(p.z) - WGS84.B_METERS,
+    }
+  }
+
+  // Bowring's initial parametric latitude.
+  const A = WGS84.A_METERS
+  const B = WGS84.B_METERS
+  const E2 = WGS84.E2
+  const E_PRIME2 = WGS84.E_PRIME2
+
+  const beta = Math.atan2(p.z * A, r * B)
+  const sinBeta = Math.sin(beta)
+  const cosBeta = Math.cos(beta)
+
+  // First approximation of geodetic latitude.
+  let latRad = Math.atan2(
+    p.z + E_PRIME2 * B * sinBeta * sinBeta * sinBeta,
+    r - E2 * A * cosBeta * cosBeta * cosBeta,
+  )
+
+  // One Newton iteration is sufficient for terrestrial heights; do two
+  // for safety.
+  for (let i = 0; i < 2; i++) {
+    const sinLat = Math.sin(latRad)
+    const cosLat = Math.cos(latRad)
+    const N = A / Math.sqrt(1 - E2 * sinLat * sinLat)
+    latRad = Math.atan2(p.z + E2 * N * sinLat, r)
+  }
+
+  const sinLat = Math.sin(latRad)
+  const cosLat = Math.cos(latRad)
+  const N = A / Math.sqrt(1 - E2 * sinLat * sinLat)
+
+  // Height: distinct formulas near equator vs near pole; use the more
+  // numerically stable one based on |latRad|.
+  let heightMeters: number
+  if (Math.abs(latRad) < Math.PI / 4) {
+    heightMeters = r / cosLat - N
+  } else {
+    heightMeters = p.z / sinLat - N * (1 - E2)
+  }
+
+  return {
+    lonLat: { lonDeg: lonRad * RAD_TO_DEG, latDeg: latRad * RAD_TO_DEG },
+    heightMeters,
+  }
 }

@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   cartesianToLonLat,
   clampLat,
+  ecefToLonLat,
   lonLatToCartesian,
+  lonLatToECEF,
   normalizeLon,
   type Cartesian3,
+  type ECEF,
   type LonLat,
 } from './coords'
 
@@ -106,5 +109,43 @@ describe('clampLat', () => {
 
   it('clamps values below -90', () => {
     expect(clampLat(-90.001)).toBe(-90)
+  })
+})
+
+describe('LonLat ↔ ECEF (WGS84) conversions', () => {
+  it('maps (0, 0) at h=0 to (A, 0, 0) — equator at prime meridian', () => {
+    const e = lonLatToECEF({ lonDeg: 0, latDeg: 0 })
+    expect(e.x).toBeCloseTo(6378137.0, 3)
+    expect(e.y).toBeCloseTo(0, 3)
+    expect(e.z).toBeCloseTo(0, 3)
+  })
+
+  it('maps (0, 90) at h=0 to (0, 0, B) — north pole', () => {
+    // B = A(1-F) ≈ 6356752.3
+    const e = lonLatToECEF({ lonDeg: 0, latDeg: 90 })
+    expect(e.x).toBeCloseTo(0, 3)
+    expect(e.y).toBeCloseTo(0, 3)
+    expect(e.z).toBeCloseTo(6356752.3142, 2)
+  })
+
+  it('round-trips 100 lat-lon points + heights from -500 to +8848 m', () => {
+    let maxLonErr = 0
+    let maxLatErr = 0
+    let maxHeightErr = 0
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 10; j++) {
+        const lonDeg = -180 + (360 * i) / 10 + 0.7
+        const latDeg = -85 + (170 * j) / 10
+        const heightMeters = -500 + (8848 + 500) * (i + j) / 20
+        const e = lonLatToECEF({ lonDeg, latDeg }, heightMeters)
+        const back = ecefToLonLat(e)
+        maxLonErr = Math.max(maxLonErr, Math.abs(back.lonLat.lonDeg - lonDeg))
+        maxLatErr = Math.max(maxLatErr, Math.abs(back.lonLat.latDeg - latDeg))
+        maxHeightErr = Math.max(maxHeightErr, Math.abs(back.heightMeters - heightMeters))
+      }
+    }
+    expect(maxLonErr).toBeLessThan(1e-9)
+    expect(maxLatErr).toBeLessThan(1e-9)
+    expect(maxHeightErr).toBeLessThan(1e-3)
   })
 })
