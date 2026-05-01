@@ -49,3 +49,7 @@ scripts/stitch-poc/.venv/
 
 # Claude Code session state
 .claude/
+
+# Git worktrees — isolated dev branches, never tracked
+.worktrees/
+
