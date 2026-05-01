@@ -8,7 +8,7 @@
 //     geodynamic models.
 
 import type { Cartesian3 } from './coords'
-import { add, cross, dot, normalize, scale } from './_vec'
+import { add, cross, dot, lerp, normalize, scale } from './_vec'
 
 /**
  * Rotate a Cartesian3 about a unit axis by an angle (radians) using
@@ -39,4 +39,60 @@ export function rotateAxisAngle(
     add(scale(p, cosA), scale(kCrossP, sinA)),
     scale(k, kDotP * oneMinusCosA),
   )
+}
+
+const EPSILON_SAME = 1e-10
+const EPSILON_ANTIPODAL = 1e-10
+
+/**
+ * Spherical linear interpolation between two unit vectors. Standard slerp
+ * formula with two edge-case branches:
+ *   - Nearly identical (cos Ω > 1 − ε): linear interp + normalize.
+ *     Avoids dividing by sin(Ω) ≈ 0; the great-circle path is degenerate
+ *     anyway because a ≈ b.
+ *   - Nearly antipodal (cos Ω < −1 + ε): no canonical great circle exists.
+ *     We pick a deterministic perpendicular axis via perpendicularFallback
+ *     and rotate `a` by t·π about it. Same input → same output across runs.
+ *
+ * Frame: unit sphere. Inputs assumed unit-length; a non-unit-length input
+ * will give wrong results without throwing.
+ */
+export function slerp(a: Cartesian3, b: Cartesian3, t: number): Cartesian3 {
+  const cosOmega = dot(a, b)
+
+  if (cosOmega > 1 - EPSILON_SAME) {
+    // Nearly identical: linear interp + normalize.
+    return normalize(lerp(a, b, t))
+  }
+
+  if (cosOmega < -1 + EPSILON_ANTIPODAL) {
+    // Antipodal: rotate `a` by t·π about a deterministic perpendicular axis.
+    const axis = perpendicularFallback(a)
+    return rotateAxisAngle(a, axis, t * Math.PI)
+  }
+
+  // Standard slerp.
+  const omega = Math.acos(cosOmega)
+  const sinOmega = Math.sin(omega)
+  const wa = Math.sin((1 - t) * omega) / sinOmega
+  const wb = Math.sin(t * omega) / sinOmega
+  return add(scale(a, wa), scale(b, wb))
+}
+
+/**
+ * Pick a deterministic unit vector perpendicular to `a`. Used by slerp's
+ * antipodal branch. The convention is fixed so that same input → same
+ * output across runs.
+ *
+ *   axis = a × (1, 0, 0), unless a ≈ ±(1, 0, 0), in which case
+ *   axis = a × (0, 1, 0).
+ *
+ * The result is guaranteed perpendicular to `a` and unit-length.
+ */
+function perpendicularFallback(a: Cartesian3): Cartesian3 {
+  // Use (1,0,0) as the reference axis unless a is too close to it
+  // (then the cross product collapses to zero).
+  const reference: Cartesian3 =
+    Math.abs(a.x) > 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 }
+  return normalize(cross(a, reference))
 }
