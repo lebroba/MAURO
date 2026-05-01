@@ -72,11 +72,13 @@ export function cartesianToLonLat(p: Cartesian3): LonLat {
  * bugs (rule 10c).
  */
 export function normalizeLon(deg: number): number {
+  // Fast path: already canonical. Avoids float drift from modulo on
+  // in-range values (e.g., 179.999 stays exactly 179.999 instead of
+  // drifting to 179.99900000000002).
+  if (deg >= -180 && deg < 180) return deg === 0 ? 0 : deg
   // Wrap into [-180, 180). The +180 → -180 mapping is intentional: 180
   // and -180 are the same meridian, and we pick -180 as canonical.
   let result = ((deg + 180) % 360 + 360) % 360 - 180
-  // Floating-point % can produce -0; normalize to +0.
-  if (result === -180) return -180
   if (result === 180) return -180
   return result === 0 ? 0 : result
 }

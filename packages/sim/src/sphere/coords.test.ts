@@ -71,7 +71,7 @@ describe('normalizeLon', () => {
   it('returns input unchanged when already in [-180, 180)', () => {
     expect(normalizeLon(0)).toBe(0)
     expect(normalizeLon(-180)).toBe(-180)
-    expect(normalizeLon(179.999)).toBeCloseTo(179.999, 10)
+    expect(normalizeLon(179.999)).toBe(179.999)
   })
 
   it('wraps +180 to -180 (canonical wrap point)', () => {
