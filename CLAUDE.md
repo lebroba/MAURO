@@ -12,6 +12,7 @@ Worldbuilding workspace for TTRPG GMs (5E primary, MVP) and worldbuilding noveli
 4. **Time-versioned by default.** No in-place mutations to persistent world state. Every change is an event with a timestamp.
 5. **Substrate-first.** Pipeline stages communicate through the WorldQuery API, not by reaching into each other's data.
 6. **Mask is source-of-truth for is-land.** See `docs/CARRY_FORWARD.md` for context.
+7. **World is spherical, 2D is a render.** Coordinates are `(lon, lat)`. Noise wraps at lon = ±180. Densities are cosine-latitude weighted. Plate tectonics uses Euler rotations on a sphere, never 2D translation (this one cannot be retrofitted). Polar zones (~10°) are render-distortion zones by policy. Full rules and hex-grid tradeoff: `docs/ARCHITECTURE_PRINCIPLES.md` §10.
 
 ## Pointers
 
