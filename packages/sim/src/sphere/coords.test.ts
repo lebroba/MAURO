@@ -5,10 +5,14 @@ import {
   ecefToLonLat,
   lonLatToCartesian,
   lonLatToECEF,
+  lonLatToTilePixel,
   normalizeLon,
+  tilePixelToLonLat,
   type Cartesian3,
   type ECEF,
   type LonLat,
+  type TilePixel,
+  type TileRegion,
 } from './coords'
 
 describe('LonLat ↔ unit-sphere Cartesian conversions', () => {
@@ -147,5 +151,88 @@ describe('LonLat ↔ ECEF (WGS84) conversions', () => {
     expect(maxLonErr).toBeLessThan(1e-9)
     expect(maxLatErr).toBeLessThan(1e-9)
     expect(maxHeightErr).toBeLessThan(1e-3)
+  })
+})
+
+// Synthetic 1° × 1° tile centered at (lon=10, lat=20), 1024×1024 pixels.
+const TEST_REGION: TileRegion = {
+  lat: 20,
+  lon: 10,
+  widthDeg: 1,
+  heightDeg: 1,
+}
+const PIXEL_WIDTH = 1024
+const PIXEL_HEIGHT = 1024
+
+describe('LonLat ↔ TilePixel conversions', () => {
+  it('maps the tile center (10, 20) to (512, 512)', () => {
+    const px = lonLatToTilePixel(
+      { lonDeg: 10, latDeg: 20 },
+      TEST_REGION,
+      PIXEL_WIDTH,
+      PIXEL_HEIGHT,
+    )
+    expect(px).not.toBeNull()
+    expect(px!.px).toBeCloseTo(512, 6)
+    expect(px!.py).toBeCloseTo(512, 6)
+  })
+
+  it('maps the NW corner (lon=9.5, lat=20.5) to (0, 0)', () => {
+    // Convention: px=0 is west edge, py=0 is north edge (top of image).
+    const px = lonLatToTilePixel(
+      { lonDeg: 9.5, latDeg: 20.5 },
+      TEST_REGION,
+      PIXEL_WIDTH,
+      PIXEL_HEIGHT,
+    )
+    expect(px!.px).toBeCloseTo(0, 6)
+    expect(px!.py).toBeCloseTo(0, 6)
+  })
+
+  it('maps the SE corner (lon=10.5, lat=19.5) to (1024, 1024)', () => {
+    const px = lonLatToTilePixel(
+      { lonDeg: 10.5, latDeg: 19.5 },
+      TEST_REGION,
+      PIXEL_WIDTH,
+      PIXEL_HEIGHT,
+    )
+    expect(px!.px).toBeCloseTo(1024, 6)
+    expect(px!.py).toBeCloseTo(1024, 6)
+  })
+
+  it('returns null for points outside the tile', () => {
+    expect(
+      lonLatToTilePixel(
+        { lonDeg: 11, latDeg: 20 },
+        TEST_REGION,
+        PIXEL_WIDTH,
+        PIXEL_HEIGHT,
+      ),
+    ).toBeNull()
+    expect(
+      lonLatToTilePixel(
+        { lonDeg: 10, latDeg: 19 },
+        TEST_REGION,
+        PIXEL_WIDTH,
+        PIXEL_HEIGHT,
+      ),
+    ).toBeNull()
+  })
+
+  it('round-trips arbitrary tile-pixel coordinates within 1e-9 degrees', () => {
+    let maxErr = 0
+    for (let py = 0; py <= 1024; py += 64) {
+      for (let px = 0; px <= 1024; px += 64) {
+        const ll = tilePixelToLonLat({ px, py }, TEST_REGION, PIXEL_WIDTH, PIXEL_HEIGHT)
+        const back = lonLatToTilePixel(ll, TEST_REGION, PIXEL_WIDTH, PIXEL_HEIGHT)
+        if (back === null) continue
+        maxErr = Math.max(
+          maxErr,
+          Math.abs(back.px - px),
+          Math.abs(back.py - py),
+        )
+      }
+    }
+    expect(maxErr).toBeLessThan(1e-9)
   })
 })

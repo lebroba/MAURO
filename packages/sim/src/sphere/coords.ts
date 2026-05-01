@@ -185,3 +185,80 @@ export function ecefToLonLat(p: ECEF): { lonLat: LonLat; heightMeters: number } 
     heightMeters,
   }
 }
+
+/**
+ * Tile-local pixel coordinate. Used only at storage / raster I/O
+ * boundaries — not in the substrate's working representation. (px, py)
+ * is integer at exact-pixel positions but is float here to support
+ * sub-pixel queries.
+ */
+export interface TilePixel {
+  /** West-to-east. 0 is the west edge of the tile. */
+  px: number
+  /** North-to-south (image y axis). 0 is the north edge of the tile. */
+  py: number
+}
+
+/** Geographic region a tile covers. Subset of TileMetadata['sourceRegion']. */
+export interface TileRegion {
+  /** Latitude of the tile center, degrees. */
+  lat: number
+  /** Longitude of the tile center, degrees. */
+  lon: number
+  /** Width of the tile in degrees of longitude. */
+  widthDeg: number
+  /** Height of the tile in degrees of latitude. */
+  heightDeg: number
+}
+
+/**
+ * Convert a LonLat to tile-local pixel coordinates. Returns null if the
+ * point is outside the tile's geographic region.
+ *
+ * Convention: px=0 is the west edge, py=0 is the north edge (image y axis
+ * grows downward, matching PNG convention).
+ *
+ * Treats the tile as a flat equirectangular crop of the underlying source
+ * region — accurate at 1°×1° MVP scale; the audit doc captures this as
+ * an MVP-safe assumption to revisit when v1 introduces multi-tile
+ * composition.
+ */
+export function lonLatToTilePixel(
+  p: LonLat,
+  region: TileRegion,
+  pixelWidth: number,
+  pixelHeight: number,
+): TilePixel | null {
+  const westEdge = region.lon - region.widthDeg / 2
+  const eastEdge = region.lon + region.widthDeg / 2
+  const northEdge = region.lat + region.heightDeg / 2
+  const southEdge = region.lat - region.heightDeg / 2
+
+  if (
+    p.lonDeg < westEdge ||
+    p.lonDeg > eastEdge ||
+    p.latDeg < southEdge ||
+    p.latDeg > northEdge
+  ) {
+    return null
+  }
+
+  const px = ((p.lonDeg - westEdge) / region.widthDeg) * pixelWidth
+  const py = ((northEdge - p.latDeg) / region.heightDeg) * pixelHeight
+  return { px, py }
+}
+
+/** Convert tile-local pixel coordinates to LonLat. Inverse of lonLatToTilePixel. */
+export function tilePixelToLonLat(
+  pixel: TilePixel,
+  region: TileRegion,
+  pixelWidth: number,
+  pixelHeight: number,
+): LonLat {
+  const westEdge = region.lon - region.widthDeg / 2
+  const northEdge = region.lat + region.heightDeg / 2
+  return {
+    lonDeg: westEdge + (pixel.px / pixelWidth) * region.widthDeg,
+    latDeg: northEdge - (pixel.py / pixelHeight) * region.heightDeg,
+  }
+}
