@@ -249,7 +249,10 @@ describe('geodesicDistanceMeters (WGS84 via Karney)', () => {
     )
     // Must be finite, positive, and in the plausible Earth half-circumference range.
     expect(isFinite(d)).toBe(true)
-    expect(d).toBeGreaterThan(20_000_000)
+    // Lower bound is just below the WGS84 meridional half-circumference
+    // (~20,003,931 m) which is what Karney returns for this degenerate case.
+    // 500 m margin against future geographiclib version drift.
+    expect(d).toBeGreaterThan(20_003_000)
     expect(d).toBeLessThan(20_038_000)
   })
 
