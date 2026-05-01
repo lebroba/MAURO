@@ -81,3 +81,48 @@ export function latitudeBand(latDeg: number): LatitudeBand {
 export function isPolarZone(latDeg: number): boolean {
   return Math.abs(latDeg) >= 80
 }
+
+/**
+ * Cell area in square meters on the WGS84 ellipsoid. For a cell centered
+ * at `latDeg` with extent `dLatDeg` × `dLonDeg`. Uses the closed-form
+ * ellipsoidal surface integral:
+ *
+ *   A = ∫∫ √(EG − F²) dφ dλ
+ *
+ * For a geographic cell (constant longitude bounds), this evaluates to
+ * a function of sin(φ) and an "authalic" component captured by the
+ * eccentricity. Exact closed form (Snyder 1987, eq. 3-11):
+ *
+ *   q(φ) = (1 − e²) [ sin φ / (1 − e² sin² φ) − (1/2e) ln((1 − e sinφ)/(1 + e sinφ)) ]
+ *   A_cell = (b² · dλ / 2) · |q(φ₂) − q(φ₁)|
+ *
+ * where b is the polar radius. Use for user-facing areas (km², resource
+ * density). For abstract per-band weighting where ~0.5% accuracy is fine,
+ * cellAreaSqMeters with the mean radius is cheaper.
+ */
+export function cellAreaSqMetersWGS84(
+  latDeg: number,
+  dLatDeg: number,
+  dLonDeg: number,
+): number {
+  const lat1Rad = (latDeg - dLatDeg / 2) * DEG_TO_RAD
+  const lat2Rad = (latDeg + dLatDeg / 2) * DEG_TO_RAD
+  const dLonRad = dLonDeg * DEG_TO_RAD
+  const e = Math.sqrt(WGS84.E2)
+  const oneMinusE2 = 1 - WGS84.E2
+  const a2 = WGS84.A_METERS * WGS84.A_METERS
+
+  // Area element = a²(1-e²)cos(φ)/(1-e²sin²φ)² = (a²/2) · dq/dφ
+  // → A_cell = (a² · Δλ / 2) · |q(φ₂) − q(φ₁)|
+  return (a2 * dLonRad / 2) * Math.abs(qFunc(lat2Rad, e, oneMinusE2) - qFunc(lat1Rad, e, oneMinusE2))
+}
+
+/** Snyder's q function — auxiliary for ellipsoid surface integral. */
+function qFunc(phi: number, e: number, oneMinusE2: number): number {
+  const sinPhi = Math.sin(phi)
+  const eSinPhi = e * sinPhi
+  return (
+    (sinPhi / (1 - WGS84.E2 * sinPhi * sinPhi)) -
+    (1 / (2 * e)) * Math.log((1 - eSinPhi) / (1 + eSinPhi))
+  ) * oneMinusE2
+}

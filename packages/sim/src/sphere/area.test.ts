@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   cellAreaSqMeters,
+  cellAreaSqMetersWGS84,
   cellAreaSterad,
   isPolarZone,
   latitudeBand,
@@ -99,5 +100,34 @@ describe('isPolarZone (rule 10e render-distortion classifier)', () => {
     expect(isPolarZone(79.99)).toBe(false)
     expect(isPolarZone(0)).toBe(false)
     expect(isPolarZone(-79.99)).toBe(false)
+  })
+})
+
+describe('cellAreaSqMetersWGS84 (ellipsoid)', () => {
+  it('returns positive areas for non-degenerate cells', () => {
+    expect(cellAreaSqMetersWGS84(0, 1, 1)).toBeGreaterThan(0)
+    expect(cellAreaSqMetersWGS84(45, 1, 1)).toBeGreaterThan(0)
+    expect(cellAreaSqMetersWGS84(-45, 1, 1)).toBeGreaterThan(0)
+  })
+
+  it('summed over a 1° grid totals the WGS84 ellipsoid surface area within 0.01%', () => {
+    // Reference value: Earth's WGS84 ellipsoid surface area ≈ 510,065,621 km².
+    let total = 0
+    for (let lat = -90; lat < 90; lat++) {
+      for (let lon = -180; lon < 180; lon++) {
+        total += cellAreaSqMetersWGS84(lat + 0.5, 1, 1)
+      }
+    }
+    const totalKm2 = total / 1e6
+    expect(totalKm2).toBeGreaterThan(510_000_000)
+    expect(totalKm2).toBeLessThan(510_200_000)
+  })
+
+  it('differs from the sphere result by ~0.5% at high latitude', () => {
+    const sphere = cellAreaSqMeters(75, 1, 1)
+    const wgs84 = cellAreaSqMetersWGS84(75, 1, 1)
+    const relativeDelta = Math.abs(wgs84 - sphere) / sphere
+    expect(relativeDelta).toBeGreaterThan(0)
+    expect(relativeDelta).toBeLessThan(0.01)
   })
 })
