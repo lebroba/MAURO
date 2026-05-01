@@ -94,9 +94,13 @@ export function isPolarZone(latDeg: number): boolean {
  * eccentricity. Exact closed form (Snyder 1987, eq. 3-11):
  *
  *   q(φ) = (1 − e²) [ sin φ / (1 − e² sin² φ) − (1/2e) ln((1 − e sinφ)/(1 + e sinφ)) ]
- *   A_cell = (b² · dλ / 2) · |q(φ₂) − q(φ₁)|
+ *   A_cell = (a² · dλ / 2) · |q(φ₂) − q(φ₁)|
  *
- * where b is the polar radius. Use for user-facing areas (km², resource
+ * where a is the equatorial (semi-major) radius. (Spec doc originally
+ * said b² but that was a bug — derivation: dA = a²(1−e²) cos(φ) /
+ * (1 − e² sin²φ)² dφ dλ, and dq/dφ = 2(1−e²) cos(φ) / (1 − e² sin²φ)²,
+ * so dA = (a²/2) dq dλ. The b² version under-reports surface area by
+ * ~0.67%.) Use for user-facing areas (km², resource
  * density). For abstract per-band weighting where ~0.5% accuracy is fine,
  * cellAreaSqMeters with the mean radius is cheaper.
  */
