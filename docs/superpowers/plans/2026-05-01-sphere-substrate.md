@@ -2505,7 +2505,7 @@ git commit -m "feat(sphere): areaWeightedAccumulate — generic area-aware reduc
 **Files:**
 - Create: `packages/sim/src/sphere/index.ts`
 
-- [ ] **Step 1: Write the implementation**
+- [x] **Step 1: Write the implementation**
 
 Create `packages/sim/src/sphere/index.ts`:
 
@@ -2566,17 +2566,17 @@ export {
 } from './distribution'
 ```
 
-- [ ] **Step 2: Verify it compiles**
+- [x] **Step 2: Verify it compiles**
 
 Run: `pnpm --filter @mauro/sim typecheck`
 Expected: clean.
 
-- [ ] **Step 3: Run the full sphere test suite**
+- [x] **Step 3: Run the full sphere test suite**
 
 Run: `pnpm --filter @mauro/sim test sphere`
 Expected: every test in wgs84, coords, geodesy, area, noise, distribution passes.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add packages/sim/src/sphere/index.ts
