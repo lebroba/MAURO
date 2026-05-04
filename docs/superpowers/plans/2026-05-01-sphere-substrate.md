@@ -2853,7 +2853,7 @@ git commit -m "test(sphere): planet-scale validation harness — six test famili
 - Modify: `packages/sim/src/events/applyEvent.ts` (JSDoc additions only)
 - Create: `docs/sphere-substrate-audit-2026-05-01.md`
 
-- [ ] **Step 1: Read the four sim files in scope**
+- [x] **Step 1: Read the four sim files in scope**
 
 Read:
 - `packages/sim/src/query/WorldQuery.ts`
@@ -2867,7 +2867,7 @@ Walking each file, identify:
 3. Geometric operations that bypass the new sphere primitives.
 4. Any place where adding sphere primitives now would be net-positive.
 
-- [ ] **Step 2: Add JSDoc audit comments to WorldQuery.ts**
+- [x] **Step 2: Add JSDoc audit comments to WorldQuery.ts**
 
 Add a JSDoc block above the `WorldQuery` class declaration:
 
@@ -2888,7 +2888,7 @@ Add a JSDoc block above the `WorldQuery` class declaration:
 
 Append a similar block above the `replayAsOf` method noting the per-event tile-pixel-space mutation pattern is MVP-safe.
 
-- [ ] **Step 3: Add JSDoc audit comments to tile-loader.ts**
+- [x] **Step 3: Add JSDoc audit comments to tile-loader.ts**
 
 Add a JSDoc block above the `TileLoader` class:
 
@@ -2904,7 +2904,7 @@ Add a JSDoc block above the `TileLoader` class:
  */
 ```
 
-- [ ] **Step 4: Add JSDoc audit comments to applyEvent.ts**
+- [x] **Step 4: Add JSDoc audit comments to applyEvent.ts**
 
 Add a JSDoc block above the `applyEvent` function:
 
@@ -2923,7 +2923,7 @@ Add a JSDoc block above the `applyEvent` function:
  */
 ```
 
-- [ ] **Step 5: Write the audit doc**
+- [x] **Step 5: Write the audit doc**
 
 Create `docs/sphere-substrate-audit-2026-05-01.md`:
 
@@ -3017,12 +3017,12 @@ The substrate library at `packages/sim/src/sphere/` is the foundation
 v1 will use to address each touchpoint. No retrofit work needed at MVP.
 ```
 
-- [ ] **Step 6: Run the test suite to verify nothing regressed**
+- [x] **Step 6: Run the test suite to verify nothing regressed**
 
 Run: `pnpm --filter @mauro/sim test`
 Expected: all tests pass. (JSDoc additions are comments; no behavioral change.)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/sim/src/query/WorldQuery.ts packages/sim/src/query/tile-loader.ts packages/sim/src/events/applyEvent.ts docs/sphere-substrate-audit-2026-05-01.md

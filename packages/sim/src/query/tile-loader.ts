@@ -18,6 +18,15 @@ export interface LoadedTile {
   fresh: SubstrateState
 }
 
+/**
+ * SPHERE-SUBSTRATE AUDIT (2026-05-01):
+ * - Loads tiles as opaque PNG bytes + JSON metadata. No geometric ops.
+ * - sourceRegion (lat, lon, widthDeg, heightDeg) is the natural bridge
+ *   to lat/lon — currently only descriptive; v1 multi-tile composition
+ *   will read it through packages/sim/src/sphere/coords.ts:
+ *   lonLatToTilePixel/tilePixelToLonLat.
+ * - No false-flat assumptions found.
+ */
 export interface TileLoader {
   load(slug: TileSlug): Promise<LoadedTile>
 }

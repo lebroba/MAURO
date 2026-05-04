@@ -72,6 +72,18 @@ export interface WorldReplay {
   appliedEventCount: number
 }
 
+/**
+ * SPHERE-SUBSTRATE AUDIT (2026-05-01):
+ * - Operates on single-tile rectangular pixel substrate (Uint16Array
+ *   heightmap + mask, fixed width × height). MVP-safe assumption.
+ * - v1 multi-tile composition will need a new GlobalField abstraction
+ *   built on packages/sim/src/sphere/. WorldQuery's public API
+ *   (getWorldAsOf, replayAsOf) will gain a multi-tile variant rather
+ *   than mutate this one.
+ * - No false-flat-Earth math here today — tile coords are treated as
+ *   tile-local pixels throughout, and lat/lon only appears in
+ *   TileMetadata.sourceRegion which is descriptive metadata only.
+ */
 export class WorldQuery {
   constructor(
     private readonly db: SupabaseClient,
@@ -99,6 +111,14 @@ export class WorldQuery {
   }
 
   /**
+   * SPHERE-SUBSTRATE AUDIT (2026-05-01):
+   * - Per-event mutation pattern: each WorldEvent mutates state.heightmap
+   *   in tile-pixel space (y * width + x index). MVP-safe — all events at
+   *   single-tile scale are tile-local by construction (polygons defined in
+   *   tile-local pixel coords; no cross-tile polygon can exist yet).
+   * - v1 multi-tile composition will need polygons in (lon, lat) coords and
+   *   a per-tile dispatch layer before this loop.
+   *
    * Like `getWorldAsOf()` but also exposes the post-replay substrate state +
    * tile metadata. Use this when you need to render or further mutate the
    * state (e.g. the write-time render path in /api/worlds/[id]/events).

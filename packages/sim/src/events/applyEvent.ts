@@ -23,6 +23,18 @@ import type { Xoshiro256 } from '../rng/xoshiro256'
 
 const UINT16_MAX = 0xffff
 
+/**
+ * SPHERE-SUBSTRATE AUDIT (2026-05-01):
+ * - GeographyMutation polygons are defined in tile-local pixel space
+ *   (DemoPolygon.pixels in types.ts). At MVP single-tile scale this is
+ *   correct — polygons cannot span tile boundaries because there is
+ *   only one tile.
+ * - v1 multi-tile composition will need polygons in (lon, lat) coords,
+ *   converted to per-tile pixel space at apply-time via
+ *   packages/sim/src/sphere/coords.ts:lonLatToTilePixel.
+ * - pointInPolygon uses standard even-odd ray casting in pixel space.
+ *   No false-flat math (it's a pure 2D polygon test, not a geographic op).
+ */
 export function applyEvent(
   state: SubstrateState,
   tileMeta: TileMetadata,
