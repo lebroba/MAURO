@@ -2590,7 +2590,7 @@ git commit -m "feat(sphere): public surface — index.ts re-exports"
 **Files:**
 - Create: `packages/sim/src/sphere/characteristic.test.ts`
 
-- [ ] **Step 1: Write the harness**
+- [x] **Step 1: Write the harness**
 
 Create `packages/sim/src/sphere/characteristic.test.ts`:
 
@@ -2831,12 +2831,12 @@ describe('Family 6 — Composition with synthetic tile', () => {
 })
 ```
 
-- [ ] **Step 2: Run the harness**
+- [x] **Step 2: Run the harness**
 
 Run: `pnpm --filter @mauro/sim test characteristic`
 Expected: PASS — all six test families green. May take 5–15 seconds.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/sim/src/sphere/characteristic.test.ts
