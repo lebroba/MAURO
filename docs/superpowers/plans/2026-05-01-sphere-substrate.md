@@ -12,6 +12,8 @@
 
 **Note on test paths:** The spec proposed `__tests__/` directory paths; this plan uses co-located `*.test.ts` files to match the existing project convention (`xoshiro256.test.ts` next to `xoshiro256.ts`). Update the spec to match after implementation if desired.
 
+**Status (2026-05-04):** Tasks 1–18 complete on branch `feat/sphere-substrate` (23 commits, 134/134 tests green, typecheck clean). Remaining: Task 19 (`index.ts` public surface), Task 20 (`characteristic.test.ts` planet-scale validation), Task 21 (JSDoc audit pass + audit doc).
+
 ---
 
 ## File Structure
@@ -48,7 +50,7 @@ Plus modifications outside the new directory:
 **Files:**
 - Modify: `packages/sim/package.json`
 
-- [ ] **Step 1: Add pinned dependencies**
+- [x] **Step 1: Add pinned dependencies**
 
 Add `simplex-noise` and `geographiclib-geodesic` to the `dependencies` block of `packages/sim/package.json`. The package currently looks like:
 
@@ -76,12 +78,12 @@ Modify to:
 
 (Versions written exactly with no `^` or `~`, per Architecture Principle #8. If the latest patch is newer at install time, update to the latest 4.0.x and 2.1.x patches respectively.)
 
-- [ ] **Step 2: Install**
+- [x] **Step 2: Install**
 
 Run: `pnpm install --frozen-lockfile=false`
 Expected: lockfile updates, no errors. Both packages appear under `packages/sim/node_modules`.
 
-- [ ] **Step 3: Verify import works**
+- [x] **Step 3: Verify import works**
 
 Create a one-off REPL test (don't commit it):
 ```bash
@@ -89,7 +91,7 @@ cd packages/sim && node --input-type=module -e "import('simplex-noise').then(m =
 ```
 Expected: prints `function` twice.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add packages/sim/package.json pnpm-lock.yaml
@@ -104,7 +106,7 @@ git commit -m "chore(sim): pin simplex-noise@4.0.3 + geographiclib-geodesic@2.1.
 - Create: `packages/sim/src/sphere/wgs84.ts`
 - Create: `packages/sim/src/sphere/wgs84.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/sim/src/sphere/wgs84.test.ts`:
 
@@ -144,12 +146,12 @@ describe('WGS84 constants', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test wgs84`
 Expected: FAIL — module `./wgs84` does not exist.
 
-- [ ] **Step 3: Implement the module**
+- [x] **Step 3: Implement the module**
 
 Create `packages/sim/src/sphere/wgs84.ts`:
 
@@ -187,12 +189,12 @@ export const WGS84 = {
 } as const
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test wgs84`
 Expected: PASS — all 6 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/wgs84.ts packages/sim/src/sphere/wgs84.test.ts
@@ -206,7 +208,7 @@ git commit -m "feat(sphere): WGS84 ellipsoid constants module"
 **Files:**
 - Create: `packages/sim/src/sphere/_vec.ts`
 
-- [ ] **Step 1: Write the implementation directly (internal helpers, tested via consumers)**
+- [x] **Step 1: Write the implementation directly (internal helpers, tested via consumers)**
 
 The `_vec.ts` module is internal (underscore prefix). It's exercised by `coords.test.ts`, `geodesy.test.ts`, etc. through the public APIs. No standalone test file — keeping the test surface focused on public behavior.
 
@@ -260,12 +262,12 @@ export function lerp(a: Cartesian3, b: Cartesian3, t: number): Cartesian3 {
 }
 ```
 
-- [ ] **Step 2: Verify it compiles**
+- [x] **Step 2: Verify it compiles**
 
 Run: `pnpm --filter @mauro/sim typecheck`
 Expected: typecheck error — `Cartesian3` is imported from `./coords` but `./coords` doesn't exist yet. Defer compilation check until Task 4 lands.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/sim/src/sphere/_vec.ts
@@ -280,7 +282,7 @@ git commit -m "feat(sphere): internal Cartesian3 vector ops"
 - Create: `packages/sim/src/sphere/coords.ts` (partial — Tasks 5, 6 add to it)
 - Create: `packages/sim/src/sphere/coords.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/sim/src/sphere/coords.test.ts`:
 
@@ -399,12 +401,12 @@ describe('clampLat', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test coords`
 Expected: FAIL — module `./coords` does not exist.
 
-- [ ] **Step 3: Implement the module (partial — types + sphere conversions + utilities only)**
+- [x] **Step 3: Implement the module (partial — types + sphere conversions + utilities only)**
 
 Create `packages/sim/src/sphere/coords.ts`:
 
@@ -500,12 +502,12 @@ export function clampLat(deg: number): number {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test coords`
 Expected: PASS — all conversion + utility tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/coords.ts packages/sim/src/sphere/coords.test.ts
@@ -520,7 +522,7 @@ git commit -m "feat(sphere): LonLat ↔ unit-sphere Cartesian + lon/lat normaliz
 - Modify: `packages/sim/src/sphere/coords.ts` (append ECEF interface + functions)
 - Modify: `packages/sim/src/sphere/coords.test.ts` (append ECEF tests)
 
-- [ ] **Step 1: Append the failing test**
+- [x] **Step 1: Append the failing test**
 
 Append to `packages/sim/src/sphere/coords.test.ts`:
 
@@ -566,12 +568,12 @@ describe('LonLat ↔ ECEF (WGS84) conversions', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test coords`
 Expected: FAIL — `lonLatToECEF` not exported.
 
-- [ ] **Step 3: Append ECEF implementation to coords.ts**
+- [x] **Step 3: Append ECEF implementation to coords.ts**
 
 Append to `packages/sim/src/sphere/coords.ts`:
 
@@ -673,12 +675,12 @@ export function ecefToLonLat(p: ECEF): { lonLat: LonLat; heightMeters: number } 
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test coords`
 Expected: PASS — all ECEF tests green, prior sphere tests still green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/coords.ts packages/sim/src/sphere/coords.test.ts
@@ -693,7 +695,7 @@ git commit -m "feat(sphere): LonLat ↔ ECEF (WGS84) via Bowring's iterative for
 - Modify: `packages/sim/src/sphere/coords.ts`
 - Modify: `packages/sim/src/sphere/coords.test.ts`
 
-- [ ] **Step 1: Append the failing test**
+- [x] **Step 1: Append the failing test**
 
 The signature design: `lonLatToTilePixel` takes a `TileRegion` (the `{lat, lon, widthDeg, heightDeg}` subset of `TileMetadata.sourceRegion`) plus pixel dimensions as separate arguments. `TileMetadata` in `types.ts` does not carry pixel dimensions today (they live with the heightmap PNG), so passing them separately keeps the substrate library decoupled from the existing tile catalog.
 
@@ -791,12 +793,12 @@ describe('LonLat ↔ TilePixel conversions', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test coords`
 Expected: FAIL — `lonLatToTilePixel` not exported.
 
-- [ ] **Step 3: Append TilePixel implementation**
+- [x] **Step 3: Append TilePixel implementation**
 
 Append to `packages/sim/src/sphere/coords.ts`:
 
@@ -879,12 +881,12 @@ export function tilePixelToLonLat(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test coords`
 Expected: PASS — all coords tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/coords.ts packages/sim/src/sphere/coords.test.ts
@@ -898,7 +900,7 @@ git commit -m "feat(sphere): LonLat ↔ TilePixel for tile-local raster coords"
 **Files:**
 - Create: `packages/sim/src/sphere/_rng.ts`
 
-- [ ] **Step 1: Implement directly (internal helper, exercised by distribution + noise tests)**
+- [x] **Step 1: Implement directly (internal helper, exercised by distribution + noise tests)**
 
 Create `packages/sim/src/sphere/_rng.ts`:
 
@@ -929,12 +931,12 @@ export function asDoubleSource(rng: Xoshiro256): () => number {
 }
 ```
 
-- [ ] **Step 2: Verify it compiles**
+- [x] **Step 2: Verify it compiles**
 
 Run: `pnpm --filter @mauro/sim typecheck`
 Expected: clean.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/sim/src/sphere/_rng.ts
@@ -949,7 +951,7 @@ git commit -m "feat(sphere): internal Xoshiro256 → double adapter"
 - Create: `packages/sim/src/sphere/geodesy.ts` (partial — Tasks 9–12 add to it)
 - Create: `packages/sim/src/sphere/geodesy.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/sim/src/sphere/geodesy.test.ts`:
 
@@ -1017,12 +1019,12 @@ describe('rotateAxisAngle', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test geodesy`
 Expected: FAIL — `./geodesy` does not exist.
 
-- [ ] **Step 3: Implement rotateAxisAngle (Rodrigues' formula)**
+- [x] **Step 3: Implement rotateAxisAngle (Rodrigues' formula)**
 
 Create `packages/sim/src/sphere/geodesy.ts`:
 
@@ -1076,12 +1078,12 @@ export function rotateAxisAngle(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test geodesy`
 Expected: PASS — all six rotation tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/geodesy.ts packages/sim/src/sphere/geodesy.test.ts
@@ -1096,7 +1098,7 @@ git commit -m "feat(sphere): rotateAxisAngle via Rodrigues' formula"
 - Modify: `packages/sim/src/sphere/geodesy.ts`
 - Modify: `packages/sim/src/sphere/geodesy.test.ts`
 
-- [ ] **Step 1: Append the failing test**
+- [x] **Step 1: Append the failing test**
 
 Append to `packages/sim/src/sphere/geodesy.test.ts`:
 
@@ -1167,12 +1169,12 @@ describe('slerp', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test geodesy`
 Expected: FAIL — `slerp` not exported.
 
-- [ ] **Step 3: Implement slerp + perpendicularFallback**
+- [x] **Step 3: Implement slerp + perpendicularFallback**
 
 Append to `packages/sim/src/sphere/geodesy.ts`:
 
@@ -1236,12 +1238,12 @@ function perpendicularFallback(a: Cartesian3): Cartesian3 {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test geodesy`
 Expected: PASS — all slerp tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/geodesy.ts packages/sim/src/sphere/geodesy.test.ts
@@ -1256,7 +1258,7 @@ git commit -m "feat(sphere): slerp with deterministic antipodal fallback"
 - Modify: `packages/sim/src/sphere/geodesy.ts`
 - Modify: `packages/sim/src/sphere/geodesy.test.ts`
 
-- [ ] **Step 1: Append the failing test**
+- [x] **Step 1: Append the failing test**
 
 Append to `packages/sim/src/sphere/geodesy.test.ts`:
 
@@ -1307,12 +1309,12 @@ describe('eulerPoleRotation', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test geodesy`
 Expected: FAIL — `eulerPoleRotation` not exported.
 
-- [ ] **Step 3: Append the implementation**
+- [x] **Step 3: Append the implementation**
 
 Append to `packages/sim/src/sphere/geodesy.ts`:
 
@@ -1342,12 +1344,12 @@ export function eulerPoleRotation(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test geodesy`
 Expected: PASS — all four eulerPoleRotation tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/geodesy.ts packages/sim/src/sphere/geodesy.test.ts
@@ -1362,7 +1364,7 @@ git commit -m "feat(sphere): eulerPoleRotation — rule 10a foundation primitive
 - Modify: `packages/sim/src/sphere/geodesy.ts`
 - Modify: `packages/sim/src/sphere/geodesy.test.ts`
 
-- [ ] **Step 1: Append the failing test**
+- [x] **Step 1: Append the failing test**
 
 Append to `packages/sim/src/sphere/geodesy.test.ts`:
 
@@ -1412,12 +1414,12 @@ describe('greatCircleDistanceMeters (Haversine, sphere math)', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test geodesy`
 Expected: FAIL — `greatCircleDistanceMeters` not exported.
 
-- [ ] **Step 3: Append the implementation**
+- [x] **Step 3: Append the implementation**
 
 Append to `packages/sim/src/sphere/geodesy.ts`:
 
@@ -1461,12 +1463,12 @@ export function greatCircleDistanceMeters(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test geodesy`
 Expected: PASS — all five Haversine tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/geodesy.ts packages/sim/src/sphere/geodesy.test.ts
@@ -1481,7 +1483,7 @@ git commit -m "feat(sphere): greatCircleDistanceMeters via Haversine"
 - Modify: `packages/sim/src/sphere/geodesy.ts`
 - Modify: `packages/sim/src/sphere/geodesy.test.ts`
 
-- [ ] **Step 1: Append the failing test**
+- [x] **Step 1: Append the failing test**
 
 Append to `packages/sim/src/sphere/geodesy.test.ts`:
 
@@ -1535,12 +1537,12 @@ describe('geodesicDistanceMeters (WGS84 via Karney)', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test geodesy`
 Expected: FAIL — `geodesicDistanceMeters` not exported.
 
-- [ ] **Step 3: Append the implementation**
+- [x] **Step 3: Append the implementation**
 
 Append to `packages/sim/src/sphere/geodesy.ts`:
 
@@ -1575,12 +1577,12 @@ export function geodesicDistanceMeters(a: LonLat, b: LonLat): number {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test geodesy`
 Expected: PASS — all four geodesic tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/geodesy.ts packages/sim/src/sphere/geodesy.test.ts
@@ -1595,7 +1597,7 @@ git commit -m "feat(sphere): geodesicDistanceMeters — WGS84 via Karney/Geograp
 - Create: `packages/sim/src/sphere/area.ts` (partial — Task 14 adds WGS84 cell area)
 - Create: `packages/sim/src/sphere/area.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/sim/src/sphere/area.test.ts`:
 
@@ -1705,12 +1707,12 @@ describe('isPolarZone (rule 10e render-distortion classifier)', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test area`
 Expected: FAIL — `./area` does not exist.
 
-- [ ] **Step 3: Implement the module**
+- [x] **Step 3: Implement the module**
 
 Create `packages/sim/src/sphere/area.ts`:
 
@@ -1800,12 +1802,12 @@ export function isPolarZone(latDeg: number): boolean {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test area`
 Expected: PASS — all area tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/area.ts packages/sim/src/sphere/area.test.ts
@@ -1820,7 +1822,7 @@ git commit -m "feat(sphere): cell area, latitude bands, polar-zone classifier"
 - Modify: `packages/sim/src/sphere/area.ts`
 - Modify: `packages/sim/src/sphere/area.test.ts`
 
-- [ ] **Step 1: Append the failing test**
+- [x] **Step 1: Append the failing test**
 
 Append to `packages/sim/src/sphere/area.test.ts`:
 
@@ -1857,12 +1859,12 @@ describe('cellAreaSqMetersWGS84 (ellipsoid)', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test area`
 Expected: FAIL — `cellAreaSqMetersWGS84` not exported.
 
-- [ ] **Step 3: Append the implementation**
+- [x] **Step 3: Append the implementation**
 
 Append to `packages/sim/src/sphere/area.ts`:
 
@@ -1911,12 +1913,12 @@ function qFunc(phi: number, e: number, oneMinusE2: number): number {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test area`
 Expected: PASS — all WGS84 area tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/area.ts packages/sim/src/sphere/area.test.ts
@@ -1931,7 +1933,7 @@ git commit -m "feat(sphere): cellAreaSqMetersWGS84 — ellipsoidal surface integ
 - Create: `packages/sim/src/sphere/noise.ts`
 - Create: `packages/sim/src/sphere/noise.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/sim/src/sphere/noise.test.ts`:
 
@@ -2017,12 +2019,12 @@ describe('sampleSphereNoise', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test noise`
 Expected: FAIL — `./noise` does not exist.
 
-- [ ] **Step 3: Implement the module**
+- [x] **Step 3: Implement the module**
 
 Create `packages/sim/src/sphere/noise.ts`:
 
@@ -2111,12 +2113,12 @@ function isLonLat(p: LonLat | Cartesian3): p is LonLat {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test noise`
 Expected: PASS — all noise tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/noise.ts packages/sim/src/sphere/noise.test.ts
@@ -2131,7 +2133,7 @@ git commit -m "feat(sphere): sampleSphereNoise — 3D Simplex on unit sphere"
 - Create: `packages/sim/src/sphere/distribution.ts` (partial — Tasks 17, 18 add to it)
 - Create: `packages/sim/src/sphere/distribution.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/sim/src/sphere/distribution.test.ts`:
 
@@ -2197,12 +2199,12 @@ describe('uniformOnSphere', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test distribution`
 Expected: FAIL — `./distribution` does not exist.
 
-- [ ] **Step 3: Implement the module**
+- [x] **Step 3: Implement the module**
 
 Create `packages/sim/src/sphere/distribution.ts`:
 
@@ -2235,12 +2237,12 @@ export function uniformOnSphere(rng: Xoshiro256): LonLat {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test distribution`
 Expected: PASS — all uniformOnSphere tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/distribution.ts packages/sim/src/sphere/distribution.test.ts
@@ -2255,7 +2257,7 @@ git commit -m "feat(sphere): uniformOnSphere — area-correct sphere sampling"
 - Modify: `packages/sim/src/sphere/distribution.ts`
 - Modify: `packages/sim/src/sphere/distribution.test.ts`
 
-- [ ] **Step 1: Append the failing test**
+- [x] **Step 1: Append the failing test**
 
 Append to `packages/sim/src/sphere/distribution.test.ts`:
 
@@ -2310,12 +2312,12 @@ describe('cosineWeightedPoisson', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test distribution`
 Expected: FAIL — `cosineWeightedPoisson` not exported.
 
-- [ ] **Step 3: Append the implementation**
+- [x] **Step 3: Append the implementation**
 
 Append to `packages/sim/src/sphere/distribution.ts`:
 
@@ -2364,12 +2366,12 @@ export function cosineWeightedPoisson(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test distribution`
 Expected: PASS — all cosineWeightedPoisson tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/distribution.ts packages/sim/src/sphere/distribution.test.ts
@@ -2384,7 +2386,7 @@ git commit -m "feat(sphere): cosineWeightedPoisson — sphere placement with min
 - Modify: `packages/sim/src/sphere/distribution.ts`
 - Modify: `packages/sim/src/sphere/distribution.test.ts`
 
-- [ ] **Step 1: Append the failing test**
+- [x] **Step 1: Append the failing test**
 
 Append to `packages/sim/src/sphere/distribution.test.ts`:
 
@@ -2448,12 +2450,12 @@ describe('areaWeightedAccumulate', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @mauro/sim test distribution`
 Expected: FAIL — `areaWeightedAccumulate` not exported.
 
-- [ ] **Step 3: Append the implementation**
+- [x] **Step 3: Append the implementation**
 
 Append to `packages/sim/src/sphere/distribution.ts`:
 
@@ -2484,12 +2486,12 @@ export function areaWeightedAccumulate<T>(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @mauro/sim test distribution`
 Expected: PASS — all areaWeightedAccumulate tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/sphere/distribution.ts packages/sim/src/sphere/distribution.test.ts
