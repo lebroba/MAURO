@@ -4,6 +4,62 @@ Captured deferrals. Each item names a specific future moment that brings it back
 
 ## v0.1 (after first feature ships)
 
+### NPC roster — 10 attribute heads + Head of Country
+
+**What:** Extend the DIME-Plus interview to capture 11 named NPCs per nation: one head per DIME+FIL+MCG attribute (Diplomat, Spymaster/Information chief, General/Military head, Treasurer/Economy head, Comptroller/Finance head, Intelligence director, Justice/Law Enforcement chief, Magus/Magic head, Cultural Minister, Geographer) + Head of Country. Names + brief sigils/notes surface in the factbook as a new "Notable Figures" section.
+
+**Why:** Schwif-T's strongest specific content ask in the 4/18/2026 Discord transcript was *"Key figure Population (5-10 important people or archetypes you will meet)"*. The 10-attribute DIME+FIL+MCG framework naturally generates this roster — naming the head of each attribute IS the NPC list. This wasn't in the original PRD or the canonical project_aria spec; emerged during the 2026-05-04 office-hours framework correction.
+
+**Pros:** Direct hit on Schwif-T's stated content ask. Trivially derives from the framework already in scope. Each NPC gets a "role" tag (e.g., "Head of Diplomacy") which doubles as a mechanical handle for future v1 work (diplomacy actions need a diplomat to enact them).
+
+**Cons:** Adds 11 text inputs to the interview UI; expands the factbook output; potentially overlaps with player/NPC management features that are out of scope for the entire v0/v1 product.
+
+**Context:** Captured during /plan-eng-review on 2026-05-04. The framework correction section of `docs/superpowers/specs/2026-05-04-dime-thin-slice-design.md` calls this out as Phase 2 work. Schwif-T's Discord transcript is the primary demand evidence; he hasn't seen MAURO's specific implementation of "named heads" yet, so do not commit to the exact framing until he tries the thin slice and gives feedback.
+
+**Depends on:** Thin-slice DIME shipped + Schwif-T tested it. His feedback may reshape the framing (e.g., "I want 5 figures total, not 11" or "I want figures with relationship edges between them").
+
+**Originating review:** /plan-eng-review 2026-05-04, TODO candidate 1.
+
+---
+
+### Keyboard polygon-draw fallback — accessibility
+
+**What:** Add a keyboard-accessible alternative to the mouse/touch freehand polygon-draw. Two viable approaches:
+1. **Click-to-add-vertices keyboard mode:** Tab focuses map → Enter starts add-vertex mode → Arrow keys move a crosshair → Enter places a vertex → Esc closes the polygon.
+2. **Bounding-rectangle-by-coordinates form:** keyboard users get a separate form with two lat/lon corner inputs that produces a rectangular polygon. Lossy spatial fidelity but functional.
+
+**Why:** DESIGN.md principle 7: *"Accessibility is not optional."* The thin slice ships freehand polygon-draw as mouse/touch only — fundamentally pointer-input. Keyboard users have no path to the Establish Nation feature.
+
+**Pros:** Closes a real WCAG gap; keeps the product usable by GMs who don't use a mouse. Approach 1 is closer to the lasso UX; approach 2 is simpler but compromises spatial fidelity.
+
+**Cons:** Either approach is 30-100 lines of keyboard-mode logic. Schwif-T uses a mouse, so this won't be hit by the primary beta user. Easy to defer until a non-mouse user reports it.
+
+**Context:** Captured during /plan-design-review on 2026-05-04, Pass 6 issue. The thin slice's mouse/touch polygon-draw lives in `apps/web/src/components/MapView.tsx` (or successor file) — keyboard mode would attach to the same component.
+
+**Depends on:** A non-mouse user (or accessibility audit) reporting this. Don't build speculatively.
+
+**Originating review:** /plan-design-review 2026-05-04, Pass 6.
+
+---
+
+### Persistent interview drafts — IndexedDB autosave
+
+**What:** Add IndexedDB-backed autosave to the DIME-Plus interview. Per spec §13, this is the `NationDraftStarted` / `NationFieldChanged` event pattern with local-only persistence (separate from the canonical NationCreated event that ships at submit). Recover-on-reload restores the GM's in-progress slider values and dropdown picks.
+
+**Why:** Approach A in the 2026-05-04 design doc deliberately ships *without* draft persistence to keep the wedge tight. The trade-off is that any browser crash, accidental refresh, or back-button-mid-interview loses work. For Schwif-T's first session (likely 20-30 min of slider tuning per nation), this could be a real UX hit.
+
+**Pros:** Removes a known UX cliff; standard local-first pattern; matches the canonical project_aria spec design.
+
+**Cons:** Adds an IndexedDB code path + a draft-state-vs-final-state distinction that interview UI logic must handle (e.g., "warn before exit if draft has unsaved changes").
+
+**Context:** Captured during /plan-eng-review on 2026-05-04. Trigger condition: only build this if Schwif-T reports losing work on refresh during his thin-slice test. Don't build speculatively. The design doc's Premise 4 already documents the deliberate cut.
+
+**Depends on:** Schwif-T's thin-slice feedback. If he says "ugh, I lost my work" → build. If he doesn't mention it → leave deferred.
+
+**Originating review:** /plan-eng-review 2026-05-04, TODO candidate 2.
+
+---
+
 ### WorldQuery snapshot caching
 
 **What:** Add per-world snapshot caching to `WorldQuery.getWorldAsOf()` so replay cost doesn't grow linearly with event count.
