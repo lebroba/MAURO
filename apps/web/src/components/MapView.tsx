@@ -3,6 +3,12 @@
 import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import {
+  addPoint,
+  createFreehandPolygonState,
+  finalizePolygon,
+  toGeoJSON,
+} from './freehand-polygon'
 
 interface MapViewProps {
   /** PNG URL the renderer serves (per WorldQuery.WorldSnapshot.renderUrl). */
@@ -11,6 +17,13 @@ interface MapViewProps {
   coordsLabel: string
   /** Display label shown top-left ("Norway · cropped to The Burnt March"). */
   tileLabel: string
+  /** When true, the map is in polygon-draw mode (cursor crosshair, mouse drag captures polygon). */
+  drawingNation?: boolean
+  /** Called when the GM finalizes a polygon by mouseup. */
+  onPolygonClose?: (geoJSON: {
+    type: 'Polygon'
+    coordinates: Array<Array<[number, number]>>
+  }) => void
 }
 
 // MapLibre client component for the world detail page.
@@ -19,7 +32,13 @@ interface MapViewProps {
 // fantasy world, so we treat the PNG as the entire surface. Pan + zoom come
 // from MapLibre's built-in handlers.
 
-export function MapView({ imageUrl, coordsLabel, tileLabel }: MapViewProps) {
+export function MapView({
+  imageUrl,
+  coordsLabel,
+  tileLabel,
+  drawingNation,
+  onPolygonClose,
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
 
@@ -93,6 +112,93 @@ export function MapView({ imageUrl, coordsLabel, tileLabel }: MapViewProps) {
       source.updateImage({ url: imageUrl })
     }
   }, [imageUrl])
+
+  // Freehand polygon-draw mode.
+  // Uses MapLibre's raw mouse event API instead of @maplibre/maplibre-gl-draw
+  // because the community fork doesn't support drag-to-draw freehand mode.
+  // The state machine lives in freehand-polygon.ts for unit-testability.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !drawingNation) return
+
+    const canvas = map.getCanvas()
+    const prevCursor = canvas.style.cursor
+    canvas.style.cursor = 'crosshair'
+    map.dragPan.disable()
+
+    let state = createFreehandPolygonState()
+    let drawing = false
+    const polylineSourceId = '__nation_draw_polyline__'
+
+    // Add a temporary source + line layer for the in-progress polyline.
+    if (!map.getSource(polylineSourceId)) {
+      map.addSource(polylineSourceId, {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: [] },
+          properties: {},
+        },
+      })
+      map.addLayer({
+        id: polylineSourceId,
+        type: 'line',
+        source: polylineSourceId,
+        paint: {
+          'line-color': '#3B6B5A', // --verdigris: live-state accent per DESIGN.md
+          'line-width': 1.5,
+        },
+      })
+    }
+
+    const updatePolyline = () => {
+      const src = map.getSource(polylineSourceId) as maplibregl.GeoJSONSource | undefined
+      src?.setData({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: state.points },
+        properties: {},
+      })
+    }
+
+    const onMouseDown = (e: maplibregl.MapMouseEvent) => {
+      drawing = true
+      state = addPoint(createFreehandPolygonState(), [e.lngLat.lng, e.lngLat.lat])
+      updatePolyline()
+    }
+
+    const onMouseMove = (e: maplibregl.MapMouseEvent) => {
+      if (!drawing) return
+      state = addPoint(state, [e.lngLat.lng, e.lngLat.lat])
+      updatePolyline()
+    }
+
+    const onMouseUp = () => {
+      if (!drawing) return
+      drawing = false
+      try {
+        state = finalizePolygon(state)
+        onPolygonClose?.(toGeoJSON(state))
+      } catch {
+        // Too few points — silently reset
+        state = createFreehandPolygonState()
+        updatePolyline()
+      }
+    }
+
+    map.on('mousedown', onMouseDown)
+    map.on('mousemove', onMouseMove)
+    map.on('mouseup', onMouseUp)
+
+    return () => {
+      map.off('mousedown', onMouseDown)
+      map.off('mousemove', onMouseMove)
+      map.off('mouseup', onMouseUp)
+      if (map.getLayer(polylineSourceId)) map.removeLayer(polylineSourceId)
+      if (map.getSource(polylineSourceId)) map.removeSource(polylineSourceId)
+      canvas.style.cursor = prevCursor
+      map.dragPan.enable()
+    }
+  }, [drawingNation, onPolygonClose])
 
   return (
     <div className="relative h-full w-full">

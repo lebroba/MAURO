@@ -1657,7 +1657,7 @@ git commit -m "feat(web): POST /api/worlds/[id]/nations — record NationCreated
 - Create: `apps/web/src/components/freehand-polygon.test.ts`
 - Modify: `apps/web/src/components/MapView.tsx`
 
-- [ ] **Step 1: Write the failing test for freehand-polygon**
+- [x] **Step 1: Write the failing test for freehand-polygon**
 
 Create `apps/web/src/components/freehand-polygon.test.ts`:
 
@@ -1699,12 +1699,12 @@ describe('freehand-polygon state machine', () => {
 })
 ```
 
-- [ ] **Step 2: Run test — verify it fails**
+- [x] **Step 2: Run test — verify it fails**
 
 Run: `pnpm --filter @mauro/web test freehand-polygon`
 Expected: FAIL — `./freehand-polygon` not found.
 
-- [ ] **Step 3: Implement freehand-polygon.ts**
+- [x] **Step 3: Implement freehand-polygon.ts**
 
 Create `apps/web/src/components/freehand-polygon.ts`:
 
@@ -1766,12 +1766,12 @@ export function toGeoJSON(state: FreehandState): {
 }
 ```
 
-- [ ] **Step 4: Run test — verify it passes**
+- [x] **Step 4: Run test — verify it passes**
 
 Run: `pnpm --filter @mauro/web test freehand-polygon`
 Expected: all 4 tests pass.
 
-- [ ] **Step 5: Wire into MapView.tsx**
+- [x] **Step 5: Wire into MapView.tsx**
 
 In `apps/web/src/components/MapView.tsx`, add a new prop interface and effect that registers MapLibre event handlers when polygon-draw mode is active:
 
@@ -1865,13 +1865,13 @@ useEffect(() => {
 }, [map, drawingNation, onPolygonClose])
 ```
 
-- [ ] **Step 6: Run typecheck + sim tests**
+- [x] **Step 6: Run typecheck + sim tests**
 
 Run: `pnpm --filter @mauro/web typecheck`
 Run: `pnpm --filter @mauro/sim test`
 Expected: both clean.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web/src/components/freehand-polygon.ts apps/web/src/components/freehand-polygon.test.ts apps/web/src/components/MapView.tsx
