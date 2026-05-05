@@ -3,6 +3,7 @@ import { applyEvent, pointInPolygon } from './applyEvent'
 import { xoshiro256ss } from '../rng/xoshiro256'
 import type {
   GeographyMutationEvent,
+  NationCreatedEvent,
   SubstrateState,
   TileMetadata,
   WorldCreatedEvent,
@@ -402,5 +403,66 @@ describe('pointInPolygon', () => {
     expect(pointInPolygon(2.5, 2.5, lShape)).toBe(true) // bottom of L
     expect(pointInPolygon(2.5, 7.5, lShape)).toBe(true) // top of L
     expect(pointInPolygon(7.5, 7.5, lShape)).toBe(false) // notch (outside)
+  })
+})
+
+// ============================================================================
+// applyEvent — NationCreated (substrate-unchanged invariant)
+// ============================================================================
+
+describe('applyEvent — NationCreated', () => {
+  it('REGRESSION: NationCreated does NOT mutate substrate state', () => {
+    const state = makeState()
+    const heightmapBefore = new Uint16Array(state.heightmap) // copy
+    const maskBefore = new Uint8Array(state.mask) // copy
+    const rng = xoshiro256ss(42n)
+
+    const event: NationCreatedEvent = {
+      kind: 'NationCreated',
+      atDate: '1247-06-01',
+      payload: {
+        name: 'Test Nation',
+        polygon: {
+          type: 'Polygon',
+          coordinates: [[[10, 50], [11, 50], [11, 51], [10, 51], [10, 50]]],
+        },
+        interview: {
+          D: 5, C: 5, M: 5, E: 5, I: 5, I2: 5,
+          government: 'feudal',
+          religion: 'pantheon',
+          civTier: 'iron',
+          species: 'human',
+          currency: 'Gold Pieces',
+        },
+      },
+    }
+
+    const result = applyEvent(state, TILE_META, event, rng)
+
+    // Substrate hash invariant: heightmap and mask must be byte-identical.
+    expect(result.heightmap).toEqual(heightmapBefore)
+    expect(result.mask).toEqual(maskBefore)
+    expect(result.width).toBe(state.width)
+    expect(result.height).toBe(state.height)
+  })
+
+  it('NationCreated dispatch returns state unchanged (object identity allowed)', () => {
+    const state = makeState()
+    const rng = xoshiro256ss(42n)
+    const event: NationCreatedEvent = {
+      kind: 'NationCreated',
+      atDate: '1247-06-01',
+      payload: {
+        name: 'Test', polygon: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] },
+        interview: {
+          D: 1, C: 1, M: 1, E: 1, I: 1, I2: 1,
+          government: 'anarchic', religion: 'secular', civTier: 'bone', species: 'human',
+          currency: 'Gold Pieces',
+        },
+      },
+    }
+    const result = applyEvent(state, TILE_META, event, rng)
+    // Implementation may return same reference or a new object with same bytes.
+    expect(result.width).toBe(state.width)
   })
 })

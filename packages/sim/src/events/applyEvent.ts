@@ -51,6 +51,13 @@ export function applyEvent(
     case 'GeographyMutation':
       return applyGeographyMutation(state, tileMeta, event, rng)
 
+    case 'NationCreated':
+      // No-op on substrate. NationCreated grows the nation list (read-projected
+      // outside this reducer) but does NOT mutate heightmap/mask. The substrate
+      // hash invariant must hold across this event so existing render-cache
+      // keys remain valid.
+      return state
+
     default: {
       // Exhaustive check — adding a new event kind without a case here
       // produces a compile error here, not a runtime surprise.

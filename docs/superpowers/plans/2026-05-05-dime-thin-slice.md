@@ -252,7 +252,7 @@ git commit -m "feat(sim): NationCreatedEvent + WorldEvent union widening"
 - Modify: `packages/sim/src/events/applyEvent.ts`
 - Modify: `packages/sim/src/events/applyEvent.test.ts`
 
-- [ ] **Step 1: Write the regression test (substrate-unchanged invariant)**
+- [x] **Step 1: Write the regression test (substrate-unchanged invariant)**
 
 Add to `packages/sim/src/events/applyEvent.test.ts` (append a new `describe` block):
 
@@ -317,12 +317,12 @@ describe('applyEvent — NationCreated', () => {
 })
 ```
 
-- [ ] **Step 2: Run test — verify it fails**
+- [x] **Step 2: Run test — verify it fails**
 
 Run: `pnpm --filter @mauro/sim test applyEvent`
 Expected: FAIL with TypeScript error from the exhaustive `never` check (the new `NationCreated` case is unhandled in the switch).
 
-- [ ] **Step 3: Add NationCreated branch to applyEvent**
+- [x] **Step 3: Add NationCreated branch to applyEvent**
 
 In `packages/sim/src/events/applyEvent.ts`, update the switch (around lines 44-58):
 
@@ -353,7 +353,7 @@ In `packages/sim/src/events/applyEvent.ts`, update the switch (around lines 44-5
   }
 ```
 
-- [ ] **Step 4: Run test — verify it passes**
+- [x] **Step 4: Run test — verify it passes**
 
 Run: `pnpm --filter @mauro/sim test applyEvent`
 Expected: all `applyEvent.test.ts` tests pass, including the 2 new NationCreated tests.
@@ -361,7 +361,7 @@ Expected: all `applyEvent.test.ts` tests pass, including the 2 new NationCreated
 Run: `pnpm --filter @mauro/sim typecheck`
 Expected: clean.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/events/applyEvent.ts packages/sim/src/events/applyEvent.test.ts
