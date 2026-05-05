@@ -9,5 +9,10 @@ export {
   type Xoshiro256,
 } from './rng/xoshiro256'
 export { applyEvent, pointInPolygon } from './events/applyEvent'
+export {
+  type AuditOutput,
+  type ElevationDistribution,
+  type SliderSuggestion,
+} from './nation/types'
 
 export const PACKAGE_NAME = '@mauro/sim'

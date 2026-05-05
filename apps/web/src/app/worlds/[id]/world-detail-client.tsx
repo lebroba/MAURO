@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { MapView } from '@/components/MapView'
 import { Scrubber, type ScrubberStop } from '@/components/Scrubber'
+import type { AuditOutput, GeoJSONPolygon } from '@mauro/sim'
+import { AuditDisplay } from './audit-display'
 
 export interface SnapshotForScrubber {
   /** at_date as ISO YYYY-MM-DD; used for label/tooltip. */
@@ -64,6 +66,11 @@ export function WorldDetailClient({
   const [triggering, setTriggering] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Establish Nation tool state.
+  const [drawingNation, setDrawingNation] = useState(false)
+  const [pendingPolygon, setPendingPolygon] = useState<GeoJSONPolygon | null>(null)
+  const [pendingAudit, setPendingAudit] = useState<AuditOutput | null>(null)
+
   // After router.refresh() following a new event, the snapshots prop grows
   // but useState's initializer doesn't re-run — the scrubber would stay on
   // the old date. Auto-advance to the newest snapshot whenever the count
@@ -87,6 +94,37 @@ export function WorldDetailClient({
 
   const currentSnapshot = snapshots[selectedIndex] ?? snapshots[0] ?? null
   const imageUrl = currentSnapshot?.renderUrl ?? null
+
+  const onPolygonClose = (geoJSON: GeoJSONPolygon) => {
+    // Stub audit — surfacing the substrate to the client requires either a new
+    // /api/worlds/[id]/audit-polygon endpoint or a one-time client-side
+    // heightmap fetch. Both are out of thin-slice scope. The stub provides a
+    // single neutral suggestion so the GM has scaffolding; the full audit
+    // lands when substrate-fetch is wired in v0.1.
+    const stubAudit: AuditOutput = {
+      areaKm2: 100,
+      elevationDistribution: { deepWater: 0, shallowWater: 0, lowland: 1, midland: 0, highland: 0 },
+      suggestions: [{
+        slider: 'E',
+        value: 5,
+        prose: 'Draft suggestion — full audit lands when substrate-fetch is wired.',
+      }],
+    }
+    setPendingPolygon(geoJSON)
+    setPendingAudit(stubAudit)
+    setDrawingNation(false)
+  }
+
+  const onContinueToInterview = () => {
+    if (!pendingPolygon) return
+    sessionStorage.setItem('mauro:nation-draft:polygon', JSON.stringify(pendingPolygon))
+    router.push(`/worlds/${world.id}/nations/new`)
+  }
+
+  const onCancelDraft = () => {
+    setPendingPolygon(null)
+    setPendingAudit(null)
+  }
 
   async function triggerEvent() {
     if (triggering) return
@@ -129,8 +167,18 @@ export function WorldDetailClient({
           <span className="text-muted">▸</span>
           <span className="text-ink">{world.name}</span>
         </div>
-        <div className="font-mono text-muted text-[0.65rem] tabular-nums">
-          {topLedgerDate} <span className="text-stamp">· {topLedgerTNow}</span>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setDrawingNation(true)}
+            disabled={drawingNation || !!pendingPolygon}
+            className="border-hairline text-text px-3 py-1 text-xs uppercase tracking-wider disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {drawingNation ? 'Draw polygon…' : 'Establish nation'}
+          </button>
+          <div className="font-mono text-muted text-[0.65rem] tabular-nums">
+            {topLedgerDate} <span className="text-stamp">· {topLedgerTNow}</span>
+          </div>
         </div>
       </div>
 
@@ -173,6 +221,8 @@ export function WorldDetailClient({
               imageUrl={imageUrl}
               coordsLabel={coordsLabel}
               tileLabel={tile.name}
+              drawingNation={drawingNation}
+              onPolygonClose={onPolygonClose}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-8">
@@ -181,6 +231,14 @@ export function WorldDetailClient({
                 Tile assets aren&rsquo;t in Storage yet. Run prep-tiles + reload.
               </p>
             </div>
+          )}
+
+          {pendingAudit && (
+            <AuditDisplay
+              audit={pendingAudit}
+              onCancel={onCancelDraft}
+              onContinue={onContinueToInterview}
+            />
           )}
 
           {!hasMutationEvent ? (

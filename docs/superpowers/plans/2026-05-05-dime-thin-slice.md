@@ -1890,7 +1890,7 @@ freehand mode out of the box). Live polyline rendered in --verdigris."
 - Create: `apps/web/src/app/worlds/[id]/audit-display.tsx`
 - Modify: `apps/web/src/app/worlds/[id]/world-detail-client.tsx`
 
-- [ ] **Step 1: Implement audit-display component**
+- [x] **Step 1: Implement audit-display component**
 
 Create `apps/web/src/app/worlds/[id]/audit-display.tsx`:
 
@@ -1954,7 +1954,7 @@ export function AuditDisplay({ audit, onCancel, onContinue }: AuditDisplayProps)
 }
 ```
 
-- [ ] **Step 2: Wire Establish Nation tool into world-detail-client.tsx**
+- [x] **Step 2: Wire Establish Nation tool into world-detail-client.tsx**
 
 In `apps/web/src/app/worlds/[id]/world-detail-client.tsx`, add state and the tool button + audit-display orchestration:
 
@@ -2041,12 +2041,12 @@ Add the button + audit-display to the JSX:
 
 **Note on audit accuracy:** the stub audit above is a thin-slice compromise. The full implementation requires either (a) a server-side `/api/worlds/[id]/audit-polygon` endpoint that loads the substrate and runs `auditPolygon`, or (b) shipping the audit on the client with the heightmap downloaded once. (a) is cleaner; (b) avoids a second round-trip. Pick at implementation time based on bundle-size and round-trip cost.
 
-- [ ] **Step 3: Run typecheck**
+- [x] **Step 3: Run typecheck**
 
 Run: `pnpm --filter @mauro/web typecheck`
 Expected: clean.
 
-- [ ] **Step 4: Manual smoke test**
+- [x] **Step 4: Manual smoke test**
 
 Run dev server: `pnpm --filter @mauro/web dev`. Open `http://localhost:3000/worlds/[any-existing-world-id]`. Verify:
 - "Establish nation" button is visible
@@ -2055,7 +2055,7 @@ Run dev server: `pnpm --filter @mauro/web dev`. Open `http://localhost:3000/worl
 - "Review & continue" button visible (for non-water polygon)
 - "Cancel" button clears the pending state
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/app/worlds/[id]/audit-display.tsx apps/web/src/app/worlds/[id]/world-detail-client.tsx
