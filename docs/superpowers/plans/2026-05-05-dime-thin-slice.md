@@ -2074,7 +2074,7 @@ task; real substrate-fetch lands in a follow-up."
 **Files:**
 - Create: `apps/web/src/app/worlds/[id]/nations/new/page.tsx`
 
-- [ ] **Step 1: Implement the server page**
+- [x] **Step 1: Implement the server page**
 
 Create `apps/web/src/app/worlds/[id]/nations/new/page.tsx`:
 
@@ -2116,12 +2116,12 @@ export default async function NewNationPage({ params }: PageProps) {
 }
 ```
 
-- [ ] **Step 2: Run typecheck — InterviewClient doesn't exist yet**
+- [x] **Step 2: Run typecheck — InterviewClient doesn't exist yet**
 
 Run: `pnpm --filter @mauro/web typecheck`
 Expected: typecheck error referencing `./interview-client`. This is expected; resolved by Task 17.
 
-- [ ] **Step 3: Commit (deferring final pass to Task 17)**
+- [x] **Step 3: Commit (deferring final pass to Task 17)**
 
 ```bash
 git add apps/web/src/app/worlds/[id]/nations/new/page.tsx
