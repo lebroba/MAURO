@@ -7,7 +7,7 @@ import {
 } from './WorldQuery'
 import { worldQueryForServiceRole, worldQueryForUser } from './factories'
 import type { LoadedTile, TileLoader } from './tile-loader'
-import type { EventRow, TileMetadata, TileSlug, World } from '../types'
+import type { EventRow, NationCreatedEvent, TileMetadata, TileSlug, World } from '../types'
 
 // ============================================================================
 // Test fixtures — synthetic 32×32 substrate, one tile, controllable Supabase.
@@ -67,7 +67,7 @@ function makeEvent(opts: {
   id: bigint
   worldId?: string
   atDate: string
-  kind: 'WorldCreated' | 'GeographyMutation'
+  kind: 'WorldCreated' | 'GeographyMutation' | 'NationCreated'
   payload: unknown
 }): EventRow {
   return {
@@ -406,5 +406,69 @@ describe('WorldQuery factories — env var guards (test plan #15)', () => {
     expect(() => worldQueryForUser(req)).toThrow(
       /NEXT_PUBLIC_SUPABASE_ANON_KEY/,
     )
+  })
+})
+
+// ============================================================================
+// WorldQuery — NationCreated (substrate-hash invariant, test plan #16)
+// ============================================================================
+
+describe('WorldQuery — NationCreated', () => {
+  it('replayAsOf folds NationCreated events without changing substrate hash', async () => {
+    // Arrange: world with one WorldCreated event using in-world fantasy dates.
+    // data.events is a live reference; the mock client reads it on every call,
+    // so we can push NationCreated between the two replayAsOf invocations
+    // without rebuilding the WorldQuery or the mock client.
+    const data: MockData = {
+      worlds: new Map([['world-1', makeWorld()]]),
+      events: [
+        makeEvent({
+          id: 1n,
+          atDate: '1247-01-01',
+          kind: 'WorldCreated',
+          payload: {
+            name: 'The Burnt March',
+            tileSlug: 'earth-patagonia',
+            magicLevel: 'standard',
+            masterSeed: 'deadbeef',
+          },
+        }),
+      ],
+    }
+    const wq = new WorldQuery(makeMockClient(data), new InMemoryTileLoader())
+
+    const beforeNation = await wq.replayAsOf('world-1', '1247-05-01')
+    const hashBefore = beforeNation.substrateHash
+
+    // Act: push a NationCreated event into the live ledger
+    const nationEvent: NationCreatedEvent = {
+      kind: 'NationCreated',
+      atDate: '1247-06-01',
+      payload: {
+        name: 'Iron Duchy',
+        polygon: {
+          type: 'Polygon',
+          coordinates: [[[10, 50], [11, 50], [11, 51], [10, 51], [10, 50]]],
+        },
+        interview: {
+          D: 5, C: 6, M: 7, E: 4, I: 3, I2: 5,
+          government: 'feudal', religion: 'pantheon', civTier: 'iron',
+          species: 'human', currency: 'Gold Pieces',
+        },
+      },
+    }
+    data.events.push(
+      makeEvent({
+        id: 2n,
+        atDate: nationEvent.atDate,
+        kind: 'NationCreated',
+        payload: nationEvent.payload,
+      }),
+    )
+
+    // Assert: substrate hash is unchanged; appliedEventCount increments by 1
+    const afterNation = await wq.replayAsOf('world-1', '1247-07-01')
+    expect(afterNation.substrateHash).toBe(hashBefore)
+    expect(afterNation.appliedEventCount).toBe(beforeNation.appliedEventCount + 1)
   })
 })

@@ -379,11 +379,11 @@ snapshot URLs do not invalidate when nations are added."
 **Files:**
 - Modify: `packages/sim/src/query/WorldQuery.test.ts`
 
-- [ ] **Step 1: Read existing WorldQuery test fixtures**
+- [x] **Step 1: Read existing WorldQuery test fixtures**
 
 Read `packages/sim/src/query/WorldQuery.test.ts` to understand the existing fixture pattern (in-memory event ledger, fake tile-loader). The integration test for NationCreated must follow the same pattern.
 
-- [ ] **Step 2: Write the integration test**
+- [x] **Step 2: Write the integration test**
 
 Append to `packages/sim/src/query/WorldQuery.test.ts`:
 
@@ -424,17 +424,17 @@ describe('WorldQuery — NationCreated', () => {
 
 (If `createTestWorldQuery` and `addEventToLedger` don't exist in the existing test file, replace with the actual fixture-construction pattern used by the existing tests. Read the file first to match.)
 
-- [ ] **Step 3: Run test — verify it passes**
+- [x] **Step 3: Run test — verify it passes**
 
 Run: `pnpm --filter @mauro/sim test WorldQuery`
 Expected: all WorldQuery tests pass, including the new NationCreated integration test.
 
-- [ ] **Step 4: Run full sim suite to confirm no regressions**
+- [x] **Step 4: Run full sim suite to confirm no regressions**
 
 Run: `pnpm --filter @mauro/sim test`
 Expected: 134 prior tests + 2 NationCreated unit tests + 1 NationCreated integration test = 137+ tests, all green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/query/WorldQuery.test.ts
