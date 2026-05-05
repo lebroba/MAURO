@@ -2137,7 +2137,7 @@ git commit -m "feat(web): /worlds/[id]/nations/new page scaffold + auth gate"
 - Create: `apps/web/src/components/Accordion.tsx`
 - Create: `apps/web/src/components/Tooltip.tsx`
 
-- [ ] **Step 1: Implement Slider**
+- [x] **Step 1: Implement Slider**
 
 Create `apps/web/src/components/Slider.tsx`:
 
@@ -2178,7 +2178,7 @@ export function Slider({ label, value, onChange, min = 1, max = 10, flashing }: 
 }
 ```
 
-- [ ] **Step 2: Implement Accordion**
+- [x] **Step 2: Implement Accordion**
 
 Create `apps/web/src/components/Accordion.tsx`:
 
@@ -2223,7 +2223,7 @@ export function Accordion({ eyebrow, title, children, defaultOpen = false }: Acc
 }
 ```
 
-- [ ] **Step 3: Implement Tooltip**
+- [x] **Step 3: Implement Tooltip**
 
 Create `apps/web/src/components/Tooltip.tsx`:
 
@@ -2264,12 +2264,12 @@ export function Tooltip({ text, show, onDismiss }: TooltipProps) {
 }
 ```
 
-- [ ] **Step 4: Run typecheck**
+- [x] **Step 4: Run typecheck**
 
 Run: `pnpm --filter @mauro/web typecheck`
 Expected: clean.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/components/Slider.tsx apps/web/src/components/Accordion.tsx apps/web/src/components/Tooltip.tsx
