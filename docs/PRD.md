@@ -16,7 +16,7 @@ _Geography_
 
 _Nation creation_
 
-- Draw / lasso a region → Territorial Audit (resources, key terrain, G-baseline) → optional "Align to Audit" → 4-module DIME-Plus interview (Sovereignty / War & Arcana / Prosperity / Environment & Perception).
+- Draw / lasso a region → Territorial Audit (resources, key terrain, G-baseline) → optional "Align to Audit" → 4-module interview grouping the DIME+FIL+MCG framework (Diplomacy / Information / Military / Economy / Finance / Intelligence / Law Enforcement / Magic / Culture / Geography). The 4 modules are: Sovereignty & Foundation (D, C, L), War Machine & Arcana (M, M*, I²), Prosperity & Flow (E, F), Environment & Perception (G, I).
 - Government + religion drop-downs with derived L floor / cap.
 - Pool taps (Geography / Resources / Magic) with GM-override checkboxes.
 - 5 cascading rules (anarchy → L cap, theocratic → force religion, E≥5 → civ-tier floor, M\*≥7 → unlock telepathic-consensus, D=1 → disable embassy trigger).

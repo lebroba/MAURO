@@ -70,7 +70,7 @@ docs/
 **Files:**
 - Modify: `docs/PRD.md`
 
-- [ ] **Step 1: Locate the DIME line in PRD**
+- [x] **Step 1: Locate the DIME line in PRD**
 
 Read `docs/PRD.md`. The current MVP feature list (around line 19) reads:
 
@@ -80,7 +80,7 @@ Read `docs/PRD.md`. The current MVP feature list (around line 19) reads:
 
 This calls the framework "DIME-Plus" with 4 modules — but the actual framework is DIME+FIL+MCG (10 attributes), with the 4 modules being interview groupings.
 
-- [ ] **Step 2: Edit the line**
+- [x] **Step 2: Edit the line**
 
 Replace the DIME line with:
 
@@ -88,11 +88,11 @@ Replace the DIME line with:
 - Draw / lasso a region → Territorial Audit (resources, key terrain, G-baseline) → optional "Align to Audit" → 4-module interview grouping the DIME+FIL+MCG framework (Diplomacy / Information / Military / Economy / Finance / Intelligence / Law Enforcement / Magic / Culture / Geography). The 4 modules are: Sovereignty & Foundation (D, C, L), War Machine & Arcana (M, M*, I²), Prosperity & Flow (E, F), Environment & Perception (G, I).
 ```
 
-- [ ] **Step 3: Verify the doc still reads coherently**
+- [x] **Step 3: Verify the doc still reads coherently**
 
 Read the surrounding lines (5-10 lines before and after the edit) and confirm the bullet structure is intact.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/PRD.md
