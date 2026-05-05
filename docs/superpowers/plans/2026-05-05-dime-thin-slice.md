@@ -449,7 +449,7 @@ git commit -m "test(sim): WorldQuery.replayAsOf folds NationCreated without hash
 - Create: `packages/sim/src/nation/types.ts`
 - Create: `packages/sim/src/nation/types.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/sim/src/nation/types.test.ts`:
 
@@ -517,12 +517,12 @@ describe('nation lookup tables', () => {
 })
 ```
 
-- [ ] **Step 2: Run test — verify it fails**
+- [x] **Step 2: Run test — verify it fails**
 
 Run: `pnpm --filter @mauro/sim test nation`
 Expected: FAIL — `./types` not found.
 
-- [ ] **Step 3: Implement nation/types.ts**
+- [x] **Step 3: Implement nation/types.ts**
 
 Create `packages/sim/src/nation/types.ts`:
 
@@ -618,12 +618,12 @@ export interface AuditOutput {
 }
 ```
 
-- [ ] **Step 4: Run test — verify it passes**
+- [x] **Step 4: Run test — verify it passes**
 
 Run: `pnpm --filter @mauro/sim test nation/types`
 Expected: all 6 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/nation/types.ts packages/sim/src/nation/types.test.ts
