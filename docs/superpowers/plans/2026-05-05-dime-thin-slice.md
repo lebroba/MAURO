@@ -1462,7 +1462,7 @@ git commit -m "feat(sim): nation/factbook — prose templates for sections I/II/
 **Files:**
 - Create: `packages/sim/src/nation/index.ts`
 
-- [ ] **Step 1: Write the implementation**
+- [x] **Step 1: Write the implementation**
 
 Create `packages/sim/src/nation/index.ts`:
 
@@ -1492,17 +1492,17 @@ export { auditPolygon, ELEVATION_THRESHOLDS } from './audit'
 export { renderFactbook, type Factbook } from './factbook'
 ```
 
-- [ ] **Step 2: Run typecheck**
+- [x] **Step 2: Run typecheck**
 
 Run: `pnpm --filter @mauro/sim typecheck`
 Expected: clean.
 
-- [ ] **Step 3: Run full sim suite**
+- [x] **Step 3: Run full sim suite**
 
 Run: `pnpm --filter @mauro/sim test`
 Expected: all tests pass (134 prior + ~32 new = ~166 tests).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add packages/sim/src/nation/index.ts
