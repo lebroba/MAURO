@@ -781,7 +781,7 @@ git commit -m "feat(sim): nation/derived — deriveL, deriveF, deriveEffective"
 - Create: `packages/sim/src/nation/cascade.ts`
 - Create: `packages/sim/src/nation/cascade.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/sim/src/nation/cascade.test.ts`:
 
@@ -850,12 +850,12 @@ describe('applyCascadeRules', () => {
 })
 ```
 
-- [ ] **Step 2: Run test — verify it fails**
+- [x] **Step 2: Run test — verify it fails**
 
 Run: `pnpm --filter @mauro/sim test nation/cascade`
 Expected: FAIL — `./cascade` not found.
 
-- [ ] **Step 3: Implement nation/cascade.ts**
+- [x] **Step 3: Implement nation/cascade.ts**
 
 Create `packages/sim/src/nation/cascade.ts`:
 
@@ -935,12 +935,12 @@ export function applyCascadeRules(input: InterviewState): CascadeResult {
 }
 ```
 
-- [ ] **Step 4: Run test — verify it passes**
+- [x] **Step 4: Run test — verify it passes**
 
 Run: `pnpm --filter @mauro/sim test nation/cascade`
 Expected: all 7 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/nation/cascade.ts packages/sim/src/nation/cascade.test.ts
