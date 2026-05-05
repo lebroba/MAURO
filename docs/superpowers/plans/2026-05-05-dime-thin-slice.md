@@ -2818,7 +2818,7 @@ git commit -m "feat(web): Factbook component — empty/list/expanded states for 
 - Modify: `apps/web/src/app/worlds/[id]/world-detail-client.tsx` — render Factbook column
 - Create: `e2e/tests/nation-creation.spec.ts`
 
-- [ ] **Step 1: Surface NationCreated events from the server page**
+- [x] **Step 1: Surface NationCreated events from the server page**
 
 In `apps/web/src/app/worlds/[id]/page.tsx`, update the events SELECT and pass nation events into the client component:
 
@@ -2841,7 +2841,7 @@ const nationDisplays: NationDisplay[] = eventList
 
 Also add the `NationDisplay` and `InterviewState` imports.
 
-- [ ] **Step 2: Render Factbook column in world-detail-client.tsx**
+- [x] **Step 2: Render Factbook column in world-detail-client.tsx**
 
 In `apps/web/src/app/worlds/[id]/world-detail-client.tsx`, add the `nations` prop and render `<Factbook>` in the right column:
 
@@ -2872,7 +2872,7 @@ interface WorldDetailClientProps {
 </div>
 ```
 
-- [ ] **Step 3: Write E2E test**
+- [x] **Step 3: Write E2E test**
 
 Create `e2e/tests/nation-creation.spec.ts`:
 
@@ -2938,18 +2938,18 @@ test('Water-only polygon shows blocking error', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 4: Run E2E**
+- [x] **Step 4: Run E2E**
 
 Run: `pnpm --filter @mauro/e2e test nation-creation` (or the project's e2e runner pattern).
 Expected: happy path passes; water-only test may be skipped or asserted depending on test fixture.
 
-- [ ] **Step 5: Run full sim suite + web typecheck**
+- [x] **Step 5: Run full sim suite + web typecheck**
 
 Run: `pnpm --filter @mauro/sim test`
 Run: `pnpm --filter @mauro/web typecheck`
 Expected: both clean. Sim test count should match prior runs + ~32 new nation tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web/src/app/worlds/[id]/page.tsx apps/web/src/app/worlds/[id]/world-detail-client.tsx e2e/tests/nation-creation.spec.ts

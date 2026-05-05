@@ -7,6 +7,7 @@ import { MapView } from '@/components/MapView'
 import { Scrubber, type ScrubberStop } from '@/components/Scrubber'
 import type { AuditOutput, GeoJSONPolygon } from '@mauro/sim'
 import { AuditDisplay } from './audit-display'
+import { Factbook, type NationDisplay } from '@/components/Factbook'
 
 export interface SnapshotForScrubber {
   /** at_date as ISO YYYY-MM-DD; used for label/tooltip. */
@@ -47,6 +48,7 @@ interface WorldDetailClientProps {
   topLedgerDate: string
   topLedgerTNow: string
   hasMutationEvent: boolean
+  nations: NationDisplay[]
 }
 
 export function WorldDetailClient({
@@ -57,6 +59,7 @@ export function WorldDetailClient({
   topLedgerDate,
   topLedgerTNow,
   hasMutationEvent,
+  nations,
 }: WorldDetailClientProps) {
   const router = useRouter()
   // Default to the latest snapshot. Scrubber pin sits on T+max.
@@ -265,34 +268,7 @@ export function WorldDetailClient({
         </main>
 
         {/* FACTBOOK --------------------------------------------------- */}
-        <aside className="bg-bg p-6">
-          <div className="label-caps mb-4">Factbook</div>
-          <div className="font-display mb-1 text-2xl leading-tight">
-            {world.name}
-          </div>
-          <div className="label-caps mb-6 text-[0.65rem]">{tile.body}</div>
-
-          <dl className="font-mono mb-6 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs tabular-nums">
-            <dt className="label-caps text-[0.65rem]">Tile</dt>
-            <dd className="text-ink text-right">{world.tileSlug}</dd>
-            <dt className="label-caps text-[0.65rem]">Magic</dt>
-            <dd className="text-ink text-right">{world.magicLevel}</dd>
-            <dt className="label-caps text-[0.65rem]">Seed</dt>
-            <dd className="text-ink truncate text-right">
-              {world.masterSeed.slice(0, 12)}…
-            </dd>
-            <dt className="label-caps text-[0.65rem]">Events</dt>
-            <dd className="text-ink text-right">{events.length}</dd>
-          </dl>
-
-          <div className="border-hairline border-t pt-4">
-            <div className="label-caps mb-2 text-[0.65rem]">Field notes</div>
-            <p className="text-muted font-serif text-sm italic leading-relaxed">
-              Nation creation arrives in feature #2. The substrate is here;
-              the factbook follows.
-            </p>
-          </div>
-        </aside>
+        <Factbook nations={nations} />
       </div>
 
       {/* Scrubber ------------------------------------------------------ */}

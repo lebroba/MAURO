@@ -36,7 +36,7 @@ export default defineConfig({
     },
     {
       name: 'authed',
-      testMatch: /world-flow\.spec\.ts/,
+      testMatch: /(world-flow|nation-creation)\.spec\.ts/,
       use: {
         browserName: 'chromium',
         storageState: path.resolve(import.meta.dirname, './.auth/user.json'),

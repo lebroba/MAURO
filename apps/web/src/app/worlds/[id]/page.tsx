@@ -1,12 +1,14 @@
 import { notFound, redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { worldQueryForServiceRole } from '@mauro/sim/server'
+import type { InterviewState } from '@mauro/sim'
 import {
   WorldDetailClient,
   type EventDisplay,
   type SnapshotForScrubber,
   type TileDisplay,
 } from './world-detail-client'
+import type { NationDisplay } from '@/components/Factbook'
 
 // /worlds/[id] — server-side data fetcher; delegates rendering to the
 // client component (which manages scrubber state + map source swaps).
@@ -32,7 +34,7 @@ interface EventRow {
   id: number
   kind: string
   at_date: string
-  payload: { variant?: string } | null
+  payload: { variant?: string; name?: string; interview?: InterviewState } | null
 }
 
 const TILE_DISPLAY: Record<string, TileDisplay> = {
@@ -91,6 +93,17 @@ export default async function WorldDetailPage({ params }: PageProps) {
     .order('id', { ascending: true })
 
   const eventList = (events ?? []) as EventRow[]
+
+  // Derive NationDisplay entries from NationCreated events for the Factbook.
+  const nationDisplays: NationDisplay[] = eventList
+    .filter((e) => e.kind === 'NationCreated')
+    .map((e) => ({
+      eventId: Number(e.id),
+      name: e.payload?.name ?? '(unnamed)',
+      atDate: e.at_date,
+      interview: e.payload?.interview as InterviewState,
+    }))
+
   const tile = TILE_DISPLAY[w.tile_slug] ?? {
     name: w.tile_slug,
     body: '',
@@ -152,6 +165,7 @@ export default async function WorldDetailPage({ params }: PageProps) {
       topLedgerDate={topLedgerDate}
       topLedgerTNow={topLedgerTNow}
       hasMutationEvent={hasMutationEvent}
+      nations={nationDisplays}
     />
   )
 }
