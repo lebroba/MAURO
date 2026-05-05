@@ -955,7 +955,7 @@ git commit -m "feat(sim): nation/cascade — 5 cascading rules as pure function"
 - Create: `packages/sim/src/nation/audit.ts`
 - Create: `packages/sim/src/nation/audit.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/sim/src/nation/audit.test.ts`:
 
@@ -1057,12 +1057,12 @@ describe('auditPolygon', () => {
 })
 ```
 
-- [ ] **Step 2: Run test — verify it fails**
+- [x] **Step 2: Run test — verify it fails**
 
 Run: `pnpm --filter @mauro/sim test nation/audit`
 Expected: FAIL — `./audit` not found.
 
-- [ ] **Step 3: Implement nation/audit.ts**
+- [x] **Step 3: Implement nation/audit.ts**
 
 Create `packages/sim/src/nation/audit.ts`:
 
@@ -1251,12 +1251,12 @@ function computeSuggestions(
 }
 ```
 
-- [ ] **Step 4: Run test — verify it passes**
+- [x] **Step 4: Run test — verify it passes**
 
 Run: `pnpm --filter @mauro/sim test nation/audit`
 Expected: all 6 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/sim/src/nation/audit.ts packages/sim/src/nation/audit.test.ts
