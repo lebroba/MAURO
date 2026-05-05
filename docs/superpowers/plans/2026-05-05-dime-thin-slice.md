@@ -2286,7 +2286,7 @@ git commit -m "feat(web): Slider, Accordion, Tooltip components per DESIGN.md pa
 - Create: `apps/web/src/app/worlds/[id]/nations/new/module-prosperity.tsx`
 - Create: `apps/web/src/app/worlds/[id]/nations/new/module-environment.tsx`
 
-- [ ] **Step 1: Implement Module 1 — Sovereignty**
+- [x] **Step 1: Implement Module 1 — Sovereignty**
 
 Create `apps/web/src/app/worlds/[id]/nations/new/module-sovereignty.tsx`:
 
@@ -2356,7 +2356,7 @@ export function ModuleSovereignty({ state, onChange, flashedFields }: ModuleProp
 }
 ```
 
-- [ ] **Step 2: Implement Module 2 — War & Arcana**
+- [x] **Step 2: Implement Module 2 — War & Arcana**
 
 Create `apps/web/src/app/worlds/[id]/nations/new/module-war.tsx`:
 
@@ -2410,7 +2410,7 @@ export function ModuleWar({ state, onChange, flashedFields }: ModuleProps) {
 }
 ```
 
-- [ ] **Step 3: Implement Module 3 — Prosperity**
+- [x] **Step 3: Implement Module 3 — Prosperity**
 
 Create `apps/web/src/app/worlds/[id]/nations/new/module-prosperity.tsx`:
 
@@ -2453,7 +2453,7 @@ export function ModuleProsperity({ state, onChange, flashedFields }: ModuleProps
 }
 ```
 
-- [ ] **Step 4: Implement Module 4 — Environment**
+- [x] **Step 4: Implement Module 4 — Environment**
 
 Create `apps/web/src/app/worlds/[id]/nations/new/module-environment.tsx`:
 
@@ -2509,12 +2509,12 @@ export function ModuleEnvironment({ state, onChange, flashedFields }: ModuleProp
 }
 ```
 
-- [ ] **Step 5: Run typecheck**
+- [x] **Step 5: Run typecheck**
 
 Run: `pnpm --filter @mauro/web typecheck`
 Expected: clean.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web/src/app/worlds/[id]/nations/new/module-*.tsx
