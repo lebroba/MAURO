@@ -89,7 +89,56 @@ export interface GeographyMutationEvent {
   }
 }
 
-export type WorldEvent = WorldCreatedEvent | GeographyMutationEvent
+// ----------------------------------------------------------------------------
+// NationCreatedEvent — emitted when a GM finalizes the DIME-Plus interview.
+// Substrate (heightmap + mask) is unchanged by this event; only the
+// nation list grows. See docs/superpowers/specs/2026-05-04-dime-thin-slice-design.md.
+// ----------------------------------------------------------------------------
+
+export interface GeoJSONPolygon {
+  type: 'Polygon'
+  /** GeoJSON convention: outer ring + optional holes. Coordinates are [lon, lat]
+   * pairs in WGS84. First and last coordinate of each ring must be identical. */
+  coordinates: Array<Array<[number, number]>>
+}
+
+export type GovernmentKey =
+  | 'anarchic' | 'feudal' | 'magocracy' | 'theocracy' | 'totalitarian'
+
+export type ReligionKey =
+  | 'pantheon' | 'sovereign' | 'cult' | 'secular'
+
+export type CivTierKey =
+  | 'bone' | 'iron' | 'stone' | 'aether'
+
+export type SpeciesKey =
+  | 'human' | 'elf' | 'dwarf' | 'halfling' | 'dragonborn' | 'gnome'
+  | 'half-elf' | 'half-orc' | 'tiefling' | 'aasimar' | 'goliath' | 'orc'
+
+export interface InterviewState {
+  /** Each slider 1..10. */
+  D: number; C: number; M: number; E: number; I: number; I2: number
+  government: GovernmentKey
+  religion: ReligionKey
+  civTier: CivTierKey
+  species: SpeciesKey
+  currency: string
+}
+
+export interface NationCreatedEvent {
+  kind: 'NationCreated'
+  atDate: string
+  payload: {
+    name: string
+    polygon: GeoJSONPolygon
+    interview: InterviewState
+  }
+}
+
+export type WorldEvent =
+  | WorldCreatedEvent
+  | GeographyMutationEvent
+  | NationCreatedEvent
 export type WorldEventKind = WorldEvent['kind']
 
 /** Database row as returned by Supabase (matches `events` table schema). */

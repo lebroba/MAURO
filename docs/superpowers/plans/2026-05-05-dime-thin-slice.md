@@ -107,7 +107,7 @@ git commit -m "docs(prd): capture DIME+FIL+MCG 10-attribute framework"
 - Modify: `packages/sim/src/types.ts`
 - Test: `packages/sim/src/types.test.ts` (NEW)
 
-- [ ] **Step 1: Write the failing type test**
+- [x] **Step 1: Write the failing type test**
 
 Create `packages/sim/src/types.test.ts`:
 
@@ -155,12 +155,12 @@ describe('NationCreatedEvent', () => {
 })
 ```
 
-- [ ] **Step 2: Run typecheck — verify it fails**
+- [x] **Step 2: Run typecheck — verify it fails**
 
 Run: `pnpm --filter @mauro/sim typecheck`
 Expected: type error referencing `NationCreatedEvent` not exported from types.ts.
 
-- [ ] **Step 3: Implement — extend types.ts**
+- [x] **Step 3: Implement — extend types.ts**
 
 In `packages/sim/src/types.ts`, after the `GeographyMutationEvent` interface (around line 90), add:
 
@@ -222,7 +222,7 @@ export type WorldEvent =
 export type WorldEventKind = WorldEvent['kind']
 ```
 
-- [ ] **Step 4: Run typecheck — verify the test now passes**
+- [x] **Step 4: Run typecheck — verify the test now passes**
 
 Run: `pnpm --filter @mauro/sim typecheck`
 Expected: clean, no errors.
@@ -230,14 +230,14 @@ Expected: clean, no errors.
 Run: `pnpm --filter @mauro/sim test types`
 Expected: all tests in `types.test.ts` pass.
 
-- [ ] **Step 5: Verify existing tests still pass**
+- [x] **Step 5: Verify existing tests still pass**
 
 Run: `pnpm --filter @mauro/sim test`
 Expected: all 134 prior tests still green. The exhaustive `never` switch in `applyEvent.ts` will surface a NEW typecheck error here — that's expected and is fixed in Task 3.
 
 If typecheck fails on `applyEvent.ts` because of the missing `NationCreated` case — that's the expected error. Move to Task 3 to handle it.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/sim/src/types.ts packages/sim/src/types.test.ts
