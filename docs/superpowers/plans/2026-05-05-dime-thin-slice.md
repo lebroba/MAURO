@@ -2528,7 +2528,7 @@ git commit -m "feat(web): four interview module sub-components"
 **Files:**
 - Create: `apps/web/src/app/worlds/[id]/nations/new/interview-client.tsx`
 
-- [ ] **Step 1: Implement the parent component**
+- [x] **Step 1: Implement the parent component**
 
 Create `apps/web/src/app/worlds/[id]/nations/new/interview-client.tsx`:
 
@@ -2696,19 +2696,19 @@ export function InterviewClient({ worldId }: InterviewClientProps) {
 }
 ```
 
-- [ ] **Step 2: Run typecheck**
+- [x] **Step 2: Run typecheck**
 
 Run: `pnpm --filter @mauro/web typecheck`
 Expected: clean.
 
-- [ ] **Step 3: Manual smoke test**
+- [x] **Step 3: Manual smoke test**
 
 Run dev server, draw a polygon on a world, navigate to the interview, fill all fields, submit. Verify:
 - Cascade firing flashes affected sliders briefly
 - Submit creates a row in `events` table (check via Supabase studio)
 - Successful submit returns to `/worlds/[id]`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web/src/app/worlds/[id]/nations/new/interview-client.tsx

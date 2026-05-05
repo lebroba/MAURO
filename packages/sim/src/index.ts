@@ -15,4 +15,6 @@ export {
   type SliderSuggestion,
 } from './nation/types'
 
+export { applyCascadeRules, explainRule, type CascadeResult } from './nation/cascade'
+
 export const PACKAGE_NAME = '@mauro/sim'
