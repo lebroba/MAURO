@@ -2722,7 +2722,7 @@ git commit -m "feat(web): NationInterview parent — cascade live-firing + submi
 **Files:**
 - Create: `apps/web/src/components/Factbook.tsx`
 
-- [ ] **Step 1: Implement the component**
+- [x] **Step 1: Implement the component**
 
 Create `apps/web/src/components/Factbook.tsx`:
 
@@ -2797,12 +2797,12 @@ export function Factbook({ nations }: FactbookProps) {
 }
 ```
 
-- [ ] **Step 2: Run typecheck**
+- [x] **Step 2: Run typecheck**
 
 Run: `pnpm --filter @mauro/web typecheck`
 Expected: clean.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/web/src/components/Factbook.tsx

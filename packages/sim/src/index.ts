@@ -17,4 +17,6 @@ export {
 
 export { applyCascadeRules, explainRule, type CascadeResult } from './nation/cascade'
 
+export { renderFactbook, type Factbook } from './nation/factbook'
+
 export const PACKAGE_NAME = '@mauro/sim'
