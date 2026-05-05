@@ -1517,7 +1517,7 @@ git commit -m "feat(sim): nation/index — public surface re-exports"
 - Create: `apps/web/src/app/api/worlds/[id]/nations/route.ts`
 - Create: `apps/web/src/app/api/worlds/[id]/nations/route.test.ts` (or use e2e)
 
-- [ ] **Step 1: Write the route handler**
+- [x] **Step 1: Write the route handler**
 
 Create `apps/web/src/app/api/worlds/[id]/nations/route.ts`:
 
@@ -1632,16 +1632,16 @@ export async function POST(request: Request, { params }: PageProps) {
 }
 ```
 
-- [ ] **Step 2: Run typecheck**
+- [x] **Step 2: Run typecheck**
 
 Run: `pnpm --filter @mauro/web typecheck`
 Expected: clean.
 
-- [ ] **Step 3: Note — defer route-level integration testing to E2E (Task 19)**
+- [x] **Step 3: Note — defer route-level integration testing to E2E (Task 19)**
 
 The route handler is plumbing over existing primitives (auth, RLS, add_event RPC) all of which have tests in earlier migrations. Branch coverage (auth, validation, happy path) is exercised by the E2E test in Task 19.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web/src/app/api/worlds/[id]/nations/route.ts
