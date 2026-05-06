@@ -226,6 +226,7 @@ export function WorldDetailClient({
               tileLabel={tile.name}
               drawingNation={drawingNation}
               onPolygonClose={onPolygonClose}
+              pendingPolygon={pendingPolygon}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-8">

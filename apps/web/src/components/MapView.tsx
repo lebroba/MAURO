@@ -24,6 +24,11 @@ interface MapViewProps {
     type: 'Polygon'
     coordinates: Array<Array<[number, number]>>
   }) => void
+  /** Finalized polygon awaiting commit — rendered persistently until cleared. */
+  pendingPolygon?: {
+    type: 'Polygon'
+    coordinates: Array<Array<[number, number]>>
+  } | null
 }
 
 // MapLibre client component for the world detail page.
@@ -38,6 +43,7 @@ export function MapView({
   tileLabel,
   drawingNation,
   onPolygonClose,
+  pendingPolygon,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -128,34 +134,48 @@ export function MapView({
 
     let state = createFreehandPolygonState()
     let drawing = false
-    const polylineSourceId = '__nation_draw_polyline__'
+    const polygonSourceId = '__nation_draw_polygon__'
+    const polygonFillLayerId = '__nation_draw_polygon_fill__'
+    const polygonLineLayerId = '__nation_draw_polygon_line__'
 
-    // Add a temporary source + line layer for the in-progress polyline.
-    if (!map.getSource(polylineSourceId)) {
-      map.addSource(polylineSourceId, {
+    // Temporary source + fill/line layers for the in-progress polygon.
+    // Rendering as Polygon (rather than LineString) lets MapLibre auto-close
+    // the ring visually while the GM is still dragging — gives a real preview
+    // of the bounded area, not just the trace.
+    if (!map.getSource(polygonSourceId)) {
+      map.addSource(polygonSourceId, {
         type: 'geojson',
         data: {
           type: 'Feature',
-          geometry: { type: 'LineString', coordinates: [] },
+          geometry: { type: 'Polygon', coordinates: [[]] },
           properties: {},
         },
       })
       map.addLayer({
-        id: polylineSourceId,
-        type: 'line',
-        source: polylineSourceId,
+        id: polygonFillLayerId,
+        type: 'fill',
+        source: polygonSourceId,
         paint: {
-          'line-color': '#3B6B5A', // --verdigris: live-state accent per DESIGN.md
-          'line-width': 1.5,
+          'fill-color': '#3B6B5A', // --verdigris
+          'fill-opacity': 0.22,
+        },
+      })
+      map.addLayer({
+        id: polygonLineLayerId,
+        type: 'line',
+        source: polygonSourceId,
+        paint: {
+          'line-color': '#3B6B5A',
+          'line-width': 3,
         },
       })
     }
 
-    const updatePolyline = () => {
-      const src = map.getSource(polylineSourceId) as maplibregl.GeoJSONSource | undefined
+    const updatePolygon = () => {
+      const src = map.getSource(polygonSourceId) as maplibregl.GeoJSONSource | undefined
       src?.setData({
         type: 'Feature',
-        geometry: { type: 'LineString', coordinates: state.points },
+        geometry: { type: 'Polygon', coordinates: [state.points] },
         properties: {},
       })
     }
@@ -163,13 +183,13 @@ export function MapView({
     const onMouseDown = (e: maplibregl.MapMouseEvent) => {
       drawing = true
       state = addPoint(createFreehandPolygonState(), [e.lngLat.lng, e.lngLat.lat])
-      updatePolyline()
+      updatePolygon()
     }
 
     const onMouseMove = (e: maplibregl.MapMouseEvent) => {
       if (!drawing) return
       state = addPoint(state, [e.lngLat.lng, e.lngLat.lat])
-      updatePolyline()
+      updatePolygon()
     }
 
     const onMouseUp = () => {
@@ -181,7 +201,7 @@ export function MapView({
       } catch {
         // Too few points — silently reset
         state = createFreehandPolygonState()
-        updatePolyline()
+        updatePolygon()
       }
     }
 
@@ -193,12 +213,81 @@ export function MapView({
       map.off('mousedown', onMouseDown)
       map.off('mousemove', onMouseMove)
       map.off('mouseup', onMouseUp)
-      if (map.getLayer(polylineSourceId)) map.removeLayer(polylineSourceId)
-      if (map.getSource(polylineSourceId)) map.removeSource(polylineSourceId)
+      if (map.getLayer(polygonLineLayerId)) map.removeLayer(polygonLineLayerId)
+      if (map.getLayer(polygonFillLayerId)) map.removeLayer(polygonFillLayerId)
+      if (map.getSource(polygonSourceId)) map.removeSource(polygonSourceId)
       canvas.style.cursor = prevCursor
       map.dragPan.enable()
     }
   }, [drawingNation, onPolygonClose])
+
+  // Persistent render of a finalized-but-uncommitted polygon. Stays painted
+  // while the GM reviews the audit panel and decides whether to continue to
+  // the interview or cancel. Same fill+stroke as the draw preview.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const sourceId = '__pending_polygon__'
+    const fillLayerId = '__pending_polygon_fill__'
+    const lineLayerId = '__pending_polygon_line__'
+
+    const teardown = () => {
+      if (map.getLayer(lineLayerId)) map.removeLayer(lineLayerId)
+      if (map.getLayer(fillLayerId)) map.removeLayer(fillLayerId)
+      if (map.getSource(sourceId)) map.removeSource(sourceId)
+    }
+
+    if (!pendingPolygon) {
+      teardown()
+      return
+    }
+
+    const paint = () => {
+      if (!map.getSource(sourceId)) {
+        map.addSource(sourceId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: pendingPolygon,
+            properties: {},
+          },
+        })
+        map.addLayer({
+          id: fillLayerId,
+          type: 'fill',
+          source: sourceId,
+          paint: {
+            'fill-color': '#3B6B5A',
+            'fill-opacity': 0.22,
+          },
+        })
+        map.addLayer({
+          id: lineLayerId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': '#3B6B5A',
+            'line-width': 3,
+          },
+        })
+      } else {
+        const src = map.getSource(sourceId) as maplibregl.GeoJSONSource
+        src.setData({
+          type: 'Feature',
+          geometry: pendingPolygon,
+          properties: {},
+        })
+      }
+    }
+
+    if (map.isStyleLoaded()) {
+      paint()
+    } else {
+      map.once('load', paint)
+    }
+
+    return teardown
+  }, [pendingPolygon])
 
   return (
     <div className="relative h-full w-full">
