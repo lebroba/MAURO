@@ -53,7 +53,7 @@ export function ModuleEnvironment({ state, onChange, flashedFields }: ModuleProp
           value={state.species}
           onChange={(v) => onChange({ species: v })}
           options={SPECIES}
-          columns={3}
+          columns={2}
         />
       </div>
     </Accordion>

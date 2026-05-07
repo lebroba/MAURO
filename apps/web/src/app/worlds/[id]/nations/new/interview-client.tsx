@@ -111,24 +111,17 @@ export function InterviewClient({ worldId }: InterviewClientProps) {
 
   return (
     <div>
-      <div className="mb-10">
-        <label className="label-caps mb-2 block text-xs">Nation name</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="bg-bg border-hairline w-full border px-3 py-2 font-serif"
-          placeholder="e.g., Iron Duchy"
-        />
-      </div>
-
-      <div className="grid gap-x-12 gap-y-0 lg:grid-cols-2">
-        <div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="max-h-[60vh] overflow-y-auto pr-2">
           <ModuleSovereignty state={interview} onChange={onChange} flashedFields={flashed} />
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto pr-2">
+          <ModuleWar state={interview} onChange={onChange} flashedFields={flashed} />
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto pr-2">
           <ModuleProsperity state={interview} onChange={onChange} flashedFields={flashed} />
         </div>
-        <div>
-          <ModuleWar state={interview} onChange={onChange} flashedFields={flashed} />
+        <div className="max-h-[60vh] overflow-y-auto pr-2">
           <ModuleEnvironment state={interview} onChange={onChange} flashedFields={flashed} />
         </div>
       </div>
@@ -146,33 +139,48 @@ export function InterviewClient({ worldId }: InterviewClientProps) {
         <div className="text-stamp mt-6 font-serif italic">{error}</div>
       )}
 
-      <div className="border-hairline mt-10 flex items-center justify-between gap-4 border-t pt-6">
-        <button
-          onClick={() => {
-            sessionStorage.removeItem('mauro:nation-draft:polygon')
-            router.push(`/worlds/${worldId}`)
-          }}
-          className="border-hairline text-text px-4 py-2 text-sm"
-          type="button"
-        >
-          Cancel
-        </button>
-        <div
-          className="text-muted font-mono text-xs tabular-nums"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          <span className="text-ink">{filledCount}</span>
-          <span className="text-muted"> / {totalCount} fields complete</span>
+      <div className="border-hairline mt-8 flex flex-col gap-4 border-t pt-6 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-md md:flex-1">
+          <label htmlFor="nation-name" className="label-caps mb-2 block text-xs">
+            Nation name
+          </label>
+          <input
+            id="nation-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="bg-bg border-hairline w-full border px-3 py-2 font-serif"
+            placeholder="e.g., Iron Duchy"
+          />
         </div>
-        <button
-          onClick={onSubmit}
-          disabled={!isComplete || submitting}
-          className="bg-stamp px-4 py-2 text-sm text-[#F2EDE4] disabled:opacity-50"
-          type="button"
-        >
-          {submitting ? 'Submitting…' : 'Establish nation'}
-        </button>
+        <div className="flex items-center gap-4">
+          <div
+            className="text-muted font-mono text-xs tabular-nums"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <span className="text-ink">{filledCount}</span>
+            <span className="text-muted"> / {totalCount} fields complete</span>
+          </div>
+          <button
+            onClick={() => {
+              sessionStorage.removeItem('mauro:nation-draft:polygon')
+              router.push(`/worlds/${worldId}`)
+            }}
+            className="border-hairline text-text px-4 py-2 text-sm"
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onSubmit}
+            disabled={!isComplete || submitting}
+            className="bg-stamp px-4 py-2 text-sm text-[#F2EDE4] disabled:opacity-50"
+            type="button"
+          >
+            {submitting ? 'Submitting…' : 'Establish nation'}
+          </button>
+        </div>
       </div>
     </div>
   )
