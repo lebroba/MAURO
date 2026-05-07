@@ -210,14 +210,28 @@ export function MapView({
     map.on('mouseup', onMouseUp)
 
     return () => {
-      map.off('mousedown', onMouseDown)
-      map.off('mousemove', onMouseMove)
-      map.off('mouseup', onMouseUp)
-      if (map.getLayer(polygonLineLayerId)) map.removeLayer(polygonLineLayerId)
-      if (map.getLayer(polygonFillLayerId)) map.removeLayer(polygonFillLayerId)
-      if (map.getSource(polygonSourceId)) map.removeSource(polygonSourceId)
-      canvas.style.cursor = prevCursor
-      map.dragPan.enable()
+      // Read mapRef.current at teardown time — the closured `map` may point
+      // at a destroyed instance if the map-init effect re-ran (e.g., imageUrl
+      // changed). MapLibre throws on getLayer() after remove().
+      const m = mapRef.current
+      try {
+        map.off('mousedown', onMouseDown)
+        map.off('mousemove', onMouseMove)
+        map.off('mouseup', onMouseUp)
+      } catch {
+        // listener removal on destroyed map is a no-op concern
+      }
+      if (m && (m as unknown as { style?: unknown }).style) {
+        try {
+          if (m.getLayer(polygonLineLayerId)) m.removeLayer(polygonLineLayerId)
+          if (m.getLayer(polygonFillLayerId)) m.removeLayer(polygonFillLayerId)
+          if (m.getSource(polygonSourceId)) m.removeSource(polygonSourceId)
+          canvas.style.cursor = prevCursor
+          m.dragPan.enable()
+        } catch {
+          // Map was removed mid-cleanup — safe to ignore.
+        }
+      }
     }
   }, [drawingNation, onPolygonClose])
 
@@ -231,10 +245,18 @@ export function MapView({
     const fillLayerId = '__pending_polygon_fill__'
     const lineLayerId = '__pending_polygon_line__'
 
+    // Re-read mapRef at teardown time so we never call into a destroyed map.
+    // MapLibre's getLayer reads this.style which is nulled by remove().
     const teardown = () => {
-      if (map.getLayer(lineLayerId)) map.removeLayer(lineLayerId)
-      if (map.getLayer(fillLayerId)) map.removeLayer(fillLayerId)
-      if (map.getSource(sourceId)) map.removeSource(sourceId)
+      const m = mapRef.current
+      if (!m || !(m as unknown as { style?: unknown }).style) return
+      try {
+        if (m.getLayer(lineLayerId)) m.removeLayer(lineLayerId)
+        if (m.getLayer(fillLayerId)) m.removeLayer(fillLayerId)
+        if (m.getSource(sourceId)) m.removeSource(sourceId)
+      } catch {
+        // Map was removed mid-cleanup — safe to ignore.
+      }
     }
 
     if (!pendingPolygon) {
@@ -242,41 +264,49 @@ export function MapView({
       return
     }
 
+    let cancelled = false
     const paint = () => {
-      if (!map.getSource(sourceId)) {
-        map.addSource(sourceId, {
-          type: 'geojson',
-          data: {
+      if (cancelled) return
+      const m = mapRef.current
+      if (!m || !(m as unknown as { style?: unknown }).style) return
+      try {
+        if (!m.getSource(sourceId)) {
+          m.addSource(sourceId, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              geometry: pendingPolygon,
+              properties: {},
+            },
+          })
+          m.addLayer({
+            id: fillLayerId,
+            type: 'fill',
+            source: sourceId,
+            paint: {
+              'fill-color': '#3B6B5A',
+              'fill-opacity': 0.22,
+            },
+          })
+          m.addLayer({
+            id: lineLayerId,
+            type: 'line',
+            source: sourceId,
+            paint: {
+              'line-color': '#3B6B5A',
+              'line-width': 3,
+            },
+          })
+        } else {
+          const src = m.getSource(sourceId) as maplibregl.GeoJSONSource
+          src.setData({
             type: 'Feature',
             geometry: pendingPolygon,
             properties: {},
-          },
-        })
-        map.addLayer({
-          id: fillLayerId,
-          type: 'fill',
-          source: sourceId,
-          paint: {
-            'fill-color': '#3B6B5A',
-            'fill-opacity': 0.22,
-          },
-        })
-        map.addLayer({
-          id: lineLayerId,
-          type: 'line',
-          source: sourceId,
-          paint: {
-            'line-color': '#3B6B5A',
-            'line-width': 3,
-          },
-        })
-      } else {
-        const src = map.getSource(sourceId) as maplibregl.GeoJSONSource
-        src.setData({
-          type: 'Feature',
-          geometry: pendingPolygon,
-          properties: {},
-        })
+          })
+        }
+      } catch {
+        // Map likely destroyed between style-load and paint. Safe to skip.
       }
     }
 
@@ -286,7 +316,10 @@ export function MapView({
       map.once('load', paint)
     }
 
-    return teardown
+    return () => {
+      cancelled = true
+      teardown()
+    }
   }, [pendingPolygon])
 
   return (
