@@ -1,6 +1,7 @@
 'use client'
 
 import { Accordion } from '@/components/Accordion'
+import { ChoiceCardGroup } from '@/components/ChoiceCardGroup'
 import { Slider } from '@/components/Slider'
 import type { InterviewState } from '@mauro/sim'
 
@@ -9,6 +10,23 @@ interface ModuleProps {
   onChange: (patch: Partial<InterviewState>) => void
   flashedFields?: Set<string>
 }
+
+type Species = NonNullable<InterviewState['species']>
+
+const SPECIES: ReadonlyArray<{ value: Species; label: string }> = [
+  { value: 'human', label: 'Human' },
+  { value: 'elf', label: 'Elf' },
+  { value: 'dwarf', label: 'Dwarf' },
+  { value: 'halfling', label: 'Halfling' },
+  { value: 'dragonborn', label: 'Dragonborn' },
+  { value: 'gnome', label: 'Gnome' },
+  { value: 'half-elf', label: 'Half-Elf' },
+  { value: 'half-orc', label: 'Half-Orc' },
+  { value: 'tiefling', label: 'Tiefling' },
+  { value: 'aasimar', label: 'Aasimar' },
+  { value: 'goliath', label: 'Goliath' },
+  { value: 'orc', label: 'Orc' },
+]
 
 export function ModuleEnvironment({ state, onChange, flashedFields }: ModuleProps) {
   return (
@@ -19,30 +37,17 @@ export function ModuleEnvironment({ state, onChange, flashedFields }: ModuleProp
           value={state.I ?? null}
           onChange={(v) => onChange({ I: v })}
           flashing={flashedFields?.has('I')}
+          minLabel="Word-of-mouth"
+          maxLabel="Skein"
         />
 
-        <div>
-          <label className="label-caps mb-2 block text-xs">Dominant species</label>
-          <select
-            value={state.species ?? ''}
-            onChange={(e) => onChange({ species: e.target.value as InterviewState['species'] })}
-            className="bg-bg border-hairline w-full border px-3 py-2 font-serif"
-          >
-            <option value="" disabled>Select…</option>
-            <option value="human">Human</option>
-            <option value="elf">Elf</option>
-            <option value="dwarf">Dwarf</option>
-            <option value="halfling">Halfling</option>
-            <option value="dragonborn">Dragonborn</option>
-            <option value="gnome">Gnome</option>
-            <option value="half-elf">Half-Elf</option>
-            <option value="half-orc">Half-Orc</option>
-            <option value="tiefling">Tiefling</option>
-            <option value="aasimar">Aasimar</option>
-            <option value="goliath">Goliath</option>
-            <option value="orc">Orc</option>
-          </select>
-        </div>
+        <ChoiceCardGroup
+          label="Dominant species"
+          value={state.species}
+          onChange={(v) => onChange({ species: v })}
+          options={SPECIES}
+          columns={4}
+        />
       </div>
     </Accordion>
   )

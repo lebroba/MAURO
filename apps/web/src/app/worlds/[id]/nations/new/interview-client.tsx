@@ -66,15 +66,16 @@ export function InterviewClient({ worldId }: InterviewClientProps) {
     }
   }
 
-  const isComplete = (() => {
-    if (!name.trim()) return false
-    if (!polygon) return false
-    const required = ['D', 'C', 'M', 'E', 'I', 'I2', 'government', 'religion', 'civTier', 'species'] as const
-    return required.every((k) => {
-      const v = interview[k]
-      return v !== undefined && v !== ('' as unknown)
-    })
-  })()
+  // 12 required inputs total: name, polygon, plus the 10 DIME slots below.
+  // Track completion granularly so we can show the GM a `n / 12` counter.
+  const REQUIRED_SLOTS = ['D', 'C', 'M', 'E', 'I', 'I2', 'government', 'religion', 'civTier', 'species'] as const
+  const slotComplete = REQUIRED_SLOTS.filter((k) => {
+    const v = interview[k]
+    return v !== undefined && v !== ('' as unknown)
+  }).length
+  const filledCount = (name.trim() ? 1 : 0) + (polygon ? 1 : 0) + slotComplete
+  const totalCount = 2 + REQUIRED_SLOTS.length // 12
+  const isComplete = filledCount === totalCount
 
   const onSubmit = async () => {
     if (!isComplete || !polygon) return
@@ -139,7 +140,7 @@ export function InterviewClient({ worldId }: InterviewClientProps) {
         <div className="text-stamp mt-6 font-serif italic">{error}</div>
       )}
 
-      <div className="mt-10 flex gap-4">
+      <div className="border-hairline mt-10 flex items-center justify-between gap-4 border-t pt-6">
         <button
           onClick={() => {
             sessionStorage.removeItem('mauro:nation-draft:polygon')
@@ -150,6 +151,14 @@ export function InterviewClient({ worldId }: InterviewClientProps) {
         >
           Cancel
         </button>
+        <div
+          className="text-muted font-mono text-xs tabular-nums"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span className="text-ink">{filledCount}</span>
+          <span className="text-muted"> / {totalCount} fields complete</span>
+        </div>
         <button
           onClick={onSubmit}
           disabled={!isComplete || submitting}

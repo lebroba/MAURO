@@ -62,14 +62,14 @@ test.describe('nation creation flow', () => {
     await page.getByPlaceholder(/iron duchy/i).fill('Test Republic')
 
     // Module 1 (Sovereignty) — rendered fields: government, religion, C, D
-    await page.locator('select').nth(0).selectOption('feudal')       // government
-    await page.locator('select').nth(1).selectOption('pantheon')     // religion
+    await page.getByRole('radio', { name: 'Feudal Monarchy' }).click()
+    await page.getByRole('radio', { name: 'The Pantheon' }).click()
     await page.locator('input[type="range"]').nth(0).fill('5')       // C
     await page.locator('input[type="range"]').nth(1).fill('5')       // D
 
     // Module 2 (War) — open accordion first, then: civTier, M, I2
     await page.getByRole('button', { name: /the sword/i }).click()
-    await page.locator('select').nth(2).selectOption('iron')         // civTier
+    await page.getByRole('radio', { name: 'Age of Iron (Feudal-Early)' }).click()
     await page.locator('input[type="range"]').nth(2).fill('5')       // M
     await page.locator('input[type="range"]').nth(3).fill('5')       // I2
 
@@ -80,7 +80,7 @@ test.describe('nation creation flow', () => {
     // Module 4 (Environment) — open accordion first, then: I, species
     await page.getByRole('button', { name: /the anchor/i }).click()
     await page.locator('input[type="range"]').nth(5).fill('5')       // I
-    await page.locator('select').nth(3).selectOption('human')        // species
+    await page.getByRole('radio', { name: 'Human' }).click()
 
     await page.getByRole('button', { name: /establish nation/i }).click()
 

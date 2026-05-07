@@ -19,6 +19,8 @@ export function ModuleProsperity({ state, onChange, flashedFields }: ModuleProps
           value={state.E ?? null}
           onChange={(v) => onChange({ E: v })}
           flashing={flashedFields?.has('E')}
+          minLabel="Subsistence"
+          maxLabel="Mercantile"
         />
 
         <div>
