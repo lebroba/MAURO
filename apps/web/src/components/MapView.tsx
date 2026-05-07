@@ -57,7 +57,20 @@ export function MapView({
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
+  // Mirror imageUrl into a ref so the once-only load callback always reads
+  // the current value, not the initial closure capture.
+  const imageUrlRef = useRef(imageUrl)
+  imageUrlRef.current = imageUrl
 
+  // Map init — runs ONCE on mount. Previously this had [imageUrl] deps,
+  // which caused the entire map to be destroyed + recreated whenever the
+  // scrubber moved or a new snapshot was generated. That orphaned the
+  // load-event listeners owned by the pending-polygon and saved-nations
+  // effects (their deps didn't change, so they never re-registered onto
+  // the new map). Result: drawing a polygon and then triggering volcanic
+  // uplift wiped the polygon off the map. Now: map is built once, image
+  // swaps flow through source.updateImage() in the second effect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
@@ -89,7 +102,7 @@ export function MapView({
     map.on('load', () => {
       map.addSource('hillshade', {
         type: 'image',
-        url: imageUrl,
+        url: imageUrlRef.current,
         coordinates: [
           [-180, 85.05],
           [180, 85.05],
@@ -117,16 +130,18 @@ export function MapView({
       mapRef.current?.remove()
       mapRef.current = null
     }
-  }, [imageUrl])
+  }, [])
 
-  // Update the image source if the URL changes (Item 8: scrubber-driven swap).
+  // Update the image source if the URL changes (scrubber-driven swap).
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    const source = map.getSource('hillshade') as maplibregl.ImageSource | undefined
-    if (source) {
-      source.updateImage({ url: imageUrl })
+    const apply = () => {
+      const source = map.getSource('hillshade') as maplibregl.ImageSource | undefined
+      if (source) source.updateImage({ url: imageUrl })
     }
+    if (map.isStyleLoaded()) apply()
+    else map.once('load', apply)
   }, [imageUrl])
 
   // Freehand polygon-draw mode.
