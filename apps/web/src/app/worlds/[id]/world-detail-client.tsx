@@ -47,7 +47,6 @@ interface WorldDetailClientProps {
   snapshots: SnapshotForScrubber[]
   topLedgerDate: string
   topLedgerTNow: string
-  hasMutationEvent: boolean
   nations: NationDisplay[]
 }
 
@@ -58,7 +57,6 @@ export function WorldDetailClient({
   snapshots,
   topLedgerDate,
   topLedgerTNow,
-  hasMutationEvent,
   nations,
 }: WorldDetailClientProps) {
   const router = useRouter()
@@ -66,9 +64,6 @@ export function WorldDetailClient({
   const [selectedIndex, setSelectedIndex] = useState(
     Math.max(0, snapshots.length - 1),
   )
-  const [triggering, setTriggering] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   // Establish Nation tool state.
   const [drawingNation, setDrawingNation] = useState(false)
   const [pendingPolygon, setPendingPolygon] = useState<GeoJSONPolygon | null>(null)
@@ -159,31 +154,6 @@ export function WorldDetailClient({
   const onCancelDraft = () => {
     setPendingPolygon(null)
     setPendingAudit(null)
-  }
-
-  async function triggerEvent() {
-    if (triggering) return
-    setTriggering(true)
-    setError(null)
-    try {
-      const res = await fetch(`/api/worlds/${world.id}/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variant: 'volcanic_uplift' }),
-      })
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as {
-          error?: string
-        } | null
-        setError(data?.error ?? 'Failed to trigger event.')
-        return
-      }
-      router.refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setTriggering(false)
-    }
   }
 
   const coordsLabel = `${tile.coords} · MAURO/${world.tileSlug}`
@@ -278,27 +248,6 @@ export function WorldDetailClient({
             />
           )}
 
-          {!hasMutationEvent ? (
-            <div className="absolute bottom-4 right-4">
-              <button
-                type="button"
-                onClick={triggerEvent}
-                disabled={triggering}
-                className="bg-stamp font-sans border px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#F2EDE4] shadow-lg transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ borderColor: 'var(--color-stamp)' }}
-              >
-                {triggering ? 'Triggering…' : 'Trigger volcanic uplift'}
-              </button>
-              {error ? (
-                <div
-                  className="font-serif mt-2 max-w-xs text-right text-xs italic"
-                  style={{ color: 'var(--color-stamp)' }}
-                >
-                  {error}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
         </main>
 
         {/* FACTBOOK --------------------------------------------------- */}

@@ -30,6 +30,16 @@ export function SignInForm() {
       })
 
       if (res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { ok?: boolean; signedIn?: boolean }
+          | null
+        // Local-dev shortcut: server signed us in in-process, skip the
+        // check-email step and go straight to the home page.
+        if (data?.signedIn) {
+          router.push('/')
+          router.refresh()
+          return
+        }
         const params = new URLSearchParams({ email: trimmed })
         router.push(`/auth/check-email?${params.toString()}`)
         return

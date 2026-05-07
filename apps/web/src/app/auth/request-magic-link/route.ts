@@ -41,6 +41,63 @@ export async function POST(request: Request) {
 
   const email = rawEmail.trim().toLowerCase()
 
+  // ------------------------------------------------------------------
+  // Local-dev shortcut: skip the email send + Vercel redirect entirely.
+  // When NODE_ENV is not 'production' (i.e. `next dev`) we run the same
+  // in-process flow as /api/test-signin: idempotently create the user,
+  // upsert the beta allowlist, generate a magic-link token via admin,
+  // verify it through the SSR client (which writes the session cookie
+  // onto the outgoing response). The form sees `signedIn: true` and
+  // routes to `/` directly.
+  //
+  // This branch is unreachable on Vercel because Next sets NODE_ENV to
+  // 'production' for `next build && next start` and on hosted deploys.
+  if (process.env.NODE_ENV !== 'production') {
+    const admin = createSupabaseServiceClient()
+    const { error: createErr } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+    })
+    if (createErr && !/already.*registered|exists/i.test(createErr.message)) {
+      return NextResponse.json(
+        { error: `dev sign-in failed (createUser): ${createErr.message}` },
+        { status: 500 },
+      )
+    }
+    const { error: allowlistErr } = await admin
+      .from('beta_allowlist')
+      .upsert({ email }, { onConflict: 'email' })
+    if (allowlistErr) {
+      return NextResponse.json(
+        { error: `dev sign-in failed (allowlist): ${allowlistErr.message}` },
+        { status: 500 },
+      )
+    }
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+    })
+    if (linkErr || !linkData?.properties?.hashed_token) {
+      return NextResponse.json(
+        { error: `dev sign-in failed (generateLink): ${linkErr?.message ?? 'no token'}` },
+        { status: 500 },
+      )
+    }
+    const supabase = await createSupabaseServerClient()
+    const { error: verifyErr } = await supabase.auth.verifyOtp({
+      type: 'magiclink',
+      token_hash: linkData.properties.hashed_token,
+    })
+    if (verifyErr) {
+      return NextResponse.json(
+        { error: `dev sign-in failed (verifyOtp): ${verifyErr.message}` },
+        { status: 500 },
+      )
+    }
+    return NextResponse.json({ ok: true, signedIn: true, email })
+  }
+  // ------------------------------------------------------------------
+
   const service = createSupabaseServiceClient()
   const { data: allowlisted, error: allowlistErr } = await service
     .from('beta_allowlist')

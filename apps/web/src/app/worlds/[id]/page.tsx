@@ -165,8 +165,6 @@ export default async function WorldDetailPage({ params }: PageProps) {
     '0',
   )}`
 
-  const hasMutationEvent = eventList.some((e) => e.kind === 'GeographyMutation')
-
   return (
     <WorldDetailClient
       world={{
@@ -181,7 +179,6 @@ export default async function WorldDetailPage({ params }: PageProps) {
       snapshots={snapshots}
       topLedgerDate={topLedgerDate}
       topLedgerTNow={topLedgerTNow}
-      hasMutationEvent={hasMutationEvent}
       nations={nationDisplays}
     />
   )
