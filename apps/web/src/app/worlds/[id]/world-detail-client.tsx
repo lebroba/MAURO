@@ -110,24 +110,44 @@ export function WorldDetailClient({
     [nations],
   )
 
-  const onPolygonClose = (geoJSON: GeoJSONPolygon) => {
-    // Stub audit — surfacing the substrate to the client requires either a new
-    // /api/worlds/[id]/audit-polygon endpoint or a one-time client-side
-    // heightmap fetch. Both are out of thin-slice scope. The stub provides a
-    // single neutral suggestion so the GM has scaffolding; the full audit
-    // lands when substrate-fetch is wired in v0.1.
-    const stubAudit: AuditOutput = {
-      areaKm2: 100,
-      elevationDistribution: { deepWater: 0, shallowWater: 0, lowland: 1, midland: 0, highland: 0 },
-      suggestions: [{
-        slider: 'E',
-        value: 5,
-        prose: 'Draft suggestion — full audit lands when substrate-fetch is wired.',
-      }],
-    }
+  const onPolygonClose = async (geoJSON: GeoJSONPolygon) => {
     setPendingPolygon(geoJSON)
-    setPendingAudit(stubAudit)
     setDrawingNation(false)
+    setPendingAudit(null)
+    try {
+      const res = await fetch(`/api/worlds/${world.id}/audit-polygon`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ polygon: geoJSON }),
+      })
+      if (!res.ok) {
+        // Fall back to a placeholder audit so the panel still mounts; surface
+        // the error so the user sees why the real numbers didn't land.
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null
+        setPendingAudit({
+          areaKm2: 0,
+          elevationDistribution: { deepWater: 0, shallowWater: 0, lowland: 0, midland: 0, highland: 0 },
+          suggestions: [{
+            slider: 'E',
+            value: 5,
+            prose: `Audit failed: ${errBody?.error ?? `HTTP ${res.status}`}`,
+          }],
+        })
+        return
+      }
+      const audit = (await res.json()) as AuditOutput
+      setPendingAudit(audit)
+    } catch (err) {
+      setPendingAudit({
+        areaKm2: 0,
+        elevationDistribution: { deepWater: 0, shallowWater: 0, lowland: 0, midland: 0, highland: 0 },
+        suggestions: [{
+          slider: 'E',
+          value: 5,
+          prose: `Audit failed: ${err instanceof Error ? err.message : 'network error'}`,
+        }],
+      })
+    }
   }
 
   const onContinueToInterview = () => {

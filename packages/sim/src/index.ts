@@ -17,6 +17,8 @@ export {
 
 export { applyCascadeRules, explainRule, type CascadeResult } from './nation/cascade'
 
+export { auditPolygon, ELEVATION_THRESHOLDS } from './nation/audit'
+
 export { renderFactbook, type Factbook } from './nation/factbook'
 
 export const PACKAGE_NAME = '@mauro/sim'
