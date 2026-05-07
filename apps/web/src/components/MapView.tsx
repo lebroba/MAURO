@@ -13,6 +13,8 @@ import {
 interface MapViewProps {
   /** PNG URL the renderer serves (per WorldQuery.WorldSnapshot.renderUrl). */
   imageUrl: string
+  /** Optional ocean-tint overlay PNG URL (mask-derived, land transparent). */
+  oceanOverlayUrl?: string
   /** Coordinates label shown in the map's lower-left corner. */
   coordsLabel: string
   /** Display label shown top-left ("Norway · cropped to The Burnt March"). */
@@ -47,6 +49,7 @@ interface MapViewProps {
 
 export function MapView({
   imageUrl,
+  oceanOverlayUrl,
   coordsLabel,
   tileLabel,
   drawingNation,
@@ -57,10 +60,12 @@ export function MapView({
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
-  // Mirror imageUrl into a ref so the once-only load callback always reads
-  // the current value, not the initial closure capture.
+  // Mirror image URLs into refs so the once-only load callback always reads
+  // the current values, not the initial closure capture.
   const imageUrlRef = useRef(imageUrl)
   imageUrlRef.current = imageUrl
+  const oceanOverlayUrlRef = useRef(oceanOverlayUrl)
+  oceanOverlayUrlRef.current = oceanOverlayUrl
 
   // Map init — runs ONCE on mount. Previously this had [imageUrl] deps,
   // which caused the entire map to be destroyed + recreated whenever the
@@ -116,6 +121,26 @@ export function MapView({
         source: 'hillshade',
         paint: { 'raster-opacity': 1 },
       })
+      // Ocean overlay (mask-derived; land cells transparent). Stacks above
+      // the hillshade so the ocean tint is visible without obscuring relief.
+      if (oceanOverlayUrlRef.current) {
+        map.addSource('ocean-overlay', {
+          type: 'image',
+          url: oceanOverlayUrlRef.current,
+          coordinates: [
+            [-180, 85.05],
+            [180, 85.05],
+            [180, -85.05],
+            [-180, -85.05],
+          ],
+        })
+        map.addLayer({
+          id: 'ocean-overlay-layer',
+          type: 'raster',
+          source: 'ocean-overlay',
+          paint: { 'raster-opacity': 1 },
+        })
+      }
       // Fit the view to the image bounds on first load.
       map.fitBounds(
         [
