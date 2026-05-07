@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { worldQueryForServiceRole } from '@mauro/sim/server'
-import type { InterviewState } from '@mauro/sim'
+import type { GeoJSONPolygon, InterviewState } from '@mauro/sim'
 import {
   WorldDetailClient,
   type EventDisplay,
@@ -34,8 +34,20 @@ interface EventRow {
   id: number
   kind: string
   at_date: string
-  payload: { variant?: string; name?: string; interview?: InterviewState } | null
+  payload:
+    | {
+        variant?: string
+        name?: string
+        color?: string
+        polygon?: GeoJSONPolygon
+        interview?: InterviewState
+      }
+    | null
 }
+
+// Fallback palette for legacy nations created before the color field existed.
+// Rotates by event id so adjacent nations don't collide visually.
+const LEGACY_PALETTE = ['#B8442C', '#3B6B5A', '#3B4D6B', '#C77E2D', '#5B3A4F', '#7C8A66', '#7A5A2F', '#4A4D52'] as const
 
 const TILE_DISPLAY: Record<string, TileDisplay> = {
   'earth-patagonia': {
@@ -94,13 +106,17 @@ export default async function WorldDetailPage({ params }: PageProps) {
 
   const eventList = (events ?? []) as EventRow[]
 
-  // Derive NationDisplay entries from NationCreated events for the Factbook.
+  // Derive NationDisplay entries from NationCreated events for the Factbook
+  // and map overlay. Polygon + color come from the event payload; both are
+  // required for the persistent on-map render.
   const nationDisplays: NationDisplay[] = eventList
-    .filter((e) => e.kind === 'NationCreated')
-    .map((e) => ({
+    .filter((e) => e.kind === 'NationCreated' && !!e.payload?.polygon)
+    .map((e, idx) => ({
       eventId: Number(e.id),
       name: e.payload?.name ?? '(unnamed)',
       atDate: e.at_date,
+      color: e.payload?.color ?? LEGACY_PALETTE[idx % LEGACY_PALETTE.length] ?? '#B8442C',
+      polygon: e.payload!.polygon as GeoJSONPolygon,
       interview: e.payload?.interview as InterviewState,
     }))
 

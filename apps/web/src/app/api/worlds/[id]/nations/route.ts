@@ -28,9 +28,13 @@ interface PageProps {
 interface NationRequest {
   name?: string
   polygon?: GeoJSONPolygon
+  /** Hex color string (e.g. "#B8442C"). Used for the map polygon overlay. */
+  color?: string
   interview?: InterviewState
   atDate?: string
 }
+
+const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/
 
 const VALID_GOVERNMENTS = new Set(['anarchic', 'feudal', 'magocracy', 'theocracy', 'totalitarian'])
 const VALID_RELIGIONS = new Set(['pantheon', 'sovereign', 'cult', 'secular'])
@@ -70,6 +74,9 @@ export async function POST(request: Request, { params }: PageProps) {
   const errors: Record<string, string> = {}
   if (!body.name || body.name.trim().length === 0) errors.name = 'required'
   if (!body.polygon || body.polygon.type !== 'Polygon') errors.polygon = 'required (GeoJSON Polygon)'
+  if (body.color !== undefined && !HEX_COLOR_RE.test(body.color)) {
+    errors.color = 'must be #RRGGBB hex'
+  }
   if (!body.interview) errors.interview = 'required'
   else {
     const iv = body.interview
@@ -100,6 +107,7 @@ export async function POST(request: Request, { params }: PageProps) {
     p_payload: {
       name: body.name!.trim(),
       polygon: body.polygon,
+      color: body.color ?? '#B8442C',
       interview: body.interview,
     },
   })

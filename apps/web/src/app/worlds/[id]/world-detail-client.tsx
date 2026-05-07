@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { MapView } from '@/components/MapView'
@@ -97,6 +97,18 @@ export function WorldDetailClient({
 
   const currentSnapshot = snapshots[selectedIndex] ?? snapshots[0] ?? null
   const imageUrl = currentSnapshot?.renderUrl ?? null
+
+  // Memoize so MapView's saved-nations effect doesn't tear down + rebuild
+  // its layers on every render of this component.
+  const savedNations = useMemo(
+    () =>
+      nations.map((n) => ({
+        id: n.eventId,
+        color: n.color,
+        polygon: n.polygon,
+      })),
+    [nations],
+  )
 
   const onPolygonClose = (geoJSON: GeoJSONPolygon) => {
     // Stub audit — surfacing the substrate to the client requires either a new
@@ -227,6 +239,7 @@ export function WorldDetailClient({
               drawingNation={drawingNation}
               onPolygonClose={onPolygonClose}
               pendingPolygon={pendingPolygon}
+              savedNations={savedNations}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-8">

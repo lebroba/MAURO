@@ -29,6 +29,14 @@ interface MapViewProps {
     type: 'Polygon'
     coordinates: Array<Array<[number, number]>>
   } | null
+  /** Persisted nations to render as territory overlays. Each gets its own color. */
+  savedNations?: ReadonlyArray<{
+    id: number
+    color: string
+    polygon: { type: 'Polygon'; coordinates: Array<Array<[number, number]>> }
+  }>
+  /** Color used for the in-progress draw + the pending polygon overlay. */
+  drawColor?: string
 }
 
 // MapLibre client component for the world detail page.
@@ -44,6 +52,8 @@ export function MapView({
   drawingNation,
   onPolygonClose,
   pendingPolygon,
+  savedNations,
+  drawColor = '#3B6B5A',
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -156,7 +166,7 @@ export function MapView({
         type: 'fill',
         source: polygonSourceId,
         paint: {
-          'fill-color': '#3B6B5A', // --verdigris
+          'fill-color': drawColor,
           'fill-opacity': 0.22,
         },
       })
@@ -165,7 +175,7 @@ export function MapView({
         type: 'line',
         source: polygonSourceId,
         paint: {
-          'line-color': '#3B6B5A',
+          'line-color': drawColor,
           'line-width': 3,
         },
       })
@@ -233,7 +243,7 @@ export function MapView({
         }
       }
     }
-  }, [drawingNation, onPolygonClose])
+  }, [drawingNation, onPolygonClose, drawColor])
 
   // Persistent render of a finalized-but-uncommitted polygon. Stays painted
   // while the GM reviews the audit panel and decides whether to continue to
@@ -284,7 +294,7 @@ export function MapView({
             type: 'fill',
             source: sourceId,
             paint: {
-              'fill-color': '#3B6B5A',
+              'fill-color': drawColor,
               'fill-opacity': 0.22,
             },
           })
@@ -293,7 +303,7 @@ export function MapView({
             type: 'line',
             source: sourceId,
             paint: {
-              'line-color': '#3B6B5A',
+              'line-color': drawColor,
               'line-width': 3,
             },
           })
@@ -320,7 +330,91 @@ export function MapView({
       cancelled = true
       teardown()
     }
-  }, [pendingPolygon])
+  }, [pendingPolygon, drawColor])
+
+  // Persistent render of saved nations. One source with N features; fill +
+  // line layers use data-driven `'get', 'color'` so each nation paints in
+  // its own hex. Re-runs whenever the saved-nations array changes.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const sourceId = '__saved_nations__'
+    const fillLayerId = '__saved_nations_fill__'
+    const lineLayerId = '__saved_nations_line__'
+    const nations = savedNations ?? []
+
+    const teardown = () => {
+      const m = mapRef.current
+      if (!m || !(m as unknown as { style?: unknown }).style) return
+      try {
+        if (m.getLayer(lineLayerId)) m.removeLayer(lineLayerId)
+        if (m.getLayer(fillLayerId)) m.removeLayer(fillLayerId)
+        if (m.getSource(sourceId)) m.removeSource(sourceId)
+      } catch {
+        // map removed mid-cleanup — safe to ignore
+      }
+    }
+
+    if (nations.length === 0) {
+      teardown()
+      return
+    }
+
+    const featureCollection = {
+      type: 'FeatureCollection' as const,
+      features: nations.map((n) => ({
+        type: 'Feature' as const,
+        geometry: n.polygon,
+        properties: { id: n.id, color: n.color },
+      })),
+    }
+
+    let cancelled = false
+    const paint = () => {
+      if (cancelled) return
+      const m = mapRef.current
+      if (!m || !(m as unknown as { style?: unknown }).style) return
+      try {
+        const existing = m.getSource(sourceId) as maplibregl.GeoJSONSource | undefined
+        if (existing) {
+          existing.setData(featureCollection)
+          return
+        }
+        m.addSource(sourceId, { type: 'geojson', data: featureCollection })
+        m.addLayer({
+          id: fillLayerId,
+          type: 'fill',
+          source: sourceId,
+          paint: {
+            'fill-color': ['get', 'color'],
+            'fill-opacity': 0.22,
+          },
+        })
+        m.addLayer({
+          id: lineLayerId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': 3,
+          },
+        })
+      } catch {
+        // ignore — map likely destroyed
+      }
+    }
+
+    if (map.isStyleLoaded()) {
+      paint()
+    } else {
+      map.once('load', paint)
+    }
+
+    return () => {
+      cancelled = true
+      teardown()
+    }
+  }, [savedNations])
 
   return (
     <div className="relative h-full w-full">

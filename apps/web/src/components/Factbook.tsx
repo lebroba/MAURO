@@ -1,12 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { renderFactbook, type InterviewState } from '@mauro/sim'
+import { renderFactbook, type GeoJSONPolygon, type InterviewState } from '@mauro/sim'
 
 export interface NationDisplay {
   eventId: number
   name: string
   atDate: string
+  /** Hex color (e.g. "#B8442C") — used for both factbook accent and map overlay. */
+  color: string
+  /** GeoJSON polygon for the nation territory; rendered on the world map. */
+  polygon: GeoJSONPolygon
   interview: InterviewState
 }
 

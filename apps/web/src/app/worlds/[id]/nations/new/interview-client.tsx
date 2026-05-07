@@ -7,6 +7,7 @@ import { ModuleSovereignty } from './module-sovereignty'
 import { ModuleWar } from './module-war'
 import { ModuleProsperity } from './module-prosperity'
 import { ModuleEnvironment } from './module-environment'
+import { NationColorPicker } from '@/components/NationColorPicker'
 
 interface InterviewClientProps {
   worldId: string
@@ -16,6 +17,7 @@ export function InterviewClient({ worldId }: InterviewClientProps) {
   const router = useRouter()
   const [polygon, setPolygon] = useState<GeoJSONPolygon | null>(null)
   const [name, setName] = useState('')
+  const [color, setColor] = useState<string>('#B8442C')
   const [interview, setInterview] = useState<Partial<InterviewState>>({
     currency: 'Gold Pieces',
   })
@@ -88,6 +90,7 @@ export function InterviewClient({ worldId }: InterviewClientProps) {
         body: JSON.stringify({
           name: name.trim(),
           polygon,
+          color,
           interview,
         }),
       })
@@ -140,18 +143,21 @@ export function InterviewClient({ worldId }: InterviewClientProps) {
       )}
 
       <div className="border-hairline mt-8 flex flex-col gap-4 border-t pt-6 md:flex-row md:items-end md:justify-between">
-        <div className="max-w-md md:flex-1">
-          <label htmlFor="nation-name" className="label-caps mb-2 block text-xs">
-            Nation name
-          </label>
-          <input
-            id="nation-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="bg-bg border-hairline w-full border px-3 py-2 font-serif"
-            placeholder="e.g., Iron Duchy"
-          />
+        <div className="max-w-md space-y-3 md:flex-1">
+          <div>
+            <label htmlFor="nation-name" className="label-caps mb-2 block text-xs">
+              Nation name
+            </label>
+            <input
+              id="nation-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="bg-bg border-hairline w-full border px-3 py-2 font-serif"
+              placeholder="e.g., Iron Duchy"
+            />
+          </div>
+          <NationColorPicker value={color} onChange={setColor} />
         </div>
         <div className="flex items-center gap-4">
           <div
