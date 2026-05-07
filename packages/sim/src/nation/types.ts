@@ -49,7 +49,7 @@ export interface CivTierDef {
 export const CIV_TIERS: Record<CivTierKey, CivTierDef> = {
   bone: { score: 2, display: 'Age of Bone (Tribal)' },
   iron: { score: 5, display: 'Age of Iron (Feudal-Early)' },
-  stone: { score: 7, display: 'Age of Stone (Feudal-High)' },
+  stone: { score: 7, display: 'Age of Steele (Feudal-High)' },
   aether: { score: 10, display: 'Age of Aether (High Magic)' },
 }
 

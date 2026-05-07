@@ -24,7 +24,7 @@ export function ModuleWar({ state, onChange, flashedFields }: ModuleProps) {
             <option value="" disabled>Select…</option>
             <option value="bone">Age of Bone (Tribal)</option>
             <option value="iron">Age of Iron (Feudal-Early)</option>
-            <option value="stone">Age of Stone (Feudal-High)</option>
+            <option value="stone">Age of Steele (Feudal-High)</option>
             <option value="aether">Age of Aether (High Magic)</option>
           </select>
         </div>
