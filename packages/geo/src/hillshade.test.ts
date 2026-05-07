@@ -60,14 +60,21 @@ describe('computeHillshade — flat plane (test plan #16)', () => {
 // ============================================================================
 
 describe('computeHillshade — sun overhead (test plan #17)', () => {
-  it('with altitudeDeg=90, all pixels equally lit (max brightness)', () => {
+  it('with altitudeDeg=90 + flat plane, all pixels share one RGB value (uniform shade)', () => {
     const params: HillshadeParams = { ...DEFAULT_PARAMS, altitudeDeg: 90 }
     const out = computeHillshade(flatHeightmap(0), allLandMask(), W, H, params)
 
-    // Sun straight up + flat surface = full brightness (255 or near-255).
-    for (let i = 0; i < W * H; i++) {
+    // Color tinting is now applied: with a flat heightmap + sun overhead,
+    // every land pixel resolves to the same elevation-ramp color × the same
+    // luminance, so RGB must be uniform across the buffer.
+    const r0 = out[0]!
+    const g0 = out[1]!
+    const b0 = out[2]!
+    for (let i = 1; i < W * H; i++) {
       const oi = i * 4
-      expect(out[oi]!).toBeGreaterThanOrEqual(254)
+      expect(out[oi]).toBe(r0)
+      expect(out[oi + 1]).toBe(g0)
+      expect(out[oi + 2]).toBe(b0)
     }
   })
 })
@@ -92,23 +99,27 @@ describe('computeHillshade — directional gradient (test plan #18)', () => {
     const mask = allLandMask()
     const yMid = Math.floor(H / 2)
 
+    // With color tinting, raw R is no longer a clean luminance proxy because
+    // the elevation ramp tints each pixel by elevation as well as shading.
+    // Sum R+G+B to get a color-stable brightness measure.
+    const brightness = (rgba: Uint8Array, x: number, y: number) => {
+      const oi = (y * W + x) * 4
+      return rgba[oi]! + rgba[oi + 1]! + rgba[oi + 2]!
+    }
+
     // Sun in the WEST (azimuth 270°) should illuminate the WEST-facing slopes.
     const sunWest = computeHillshade(heightmap, mask, W, H, {
       ...DEFAULT_PARAMS,
       azimuthDeg: 270,
     })
-    const westFaceWithSunWest = sunWest[(yMid * W + 4) * 4]!
-    const eastFaceWithSunWest = sunWest[(yMid * W + (W - 5)) * 4]!
-    expect(westFaceWithSunWest).toBeGreaterThan(eastFaceWithSunWest)
+    expect(brightness(sunWest, 4, yMid)).toBeGreaterThan(brightness(sunWest, W - 5, yMid))
 
     // Sun in the EAST (azimuth 90°) should illuminate the EAST-facing slopes.
     const sunEast = computeHillshade(heightmap, mask, W, H, {
       ...DEFAULT_PARAMS,
       azimuthDeg: 90,
     })
-    const westFaceWithSunEast = sunEast[(yMid * W + 4) * 4]!
-    const eastFaceWithSunEast = sunEast[(yMid * W + (W - 5)) * 4]!
-    expect(eastFaceWithSunEast).toBeGreaterThan(westFaceWithSunEast)
+    expect(brightness(sunEast, W - 5, yMid)).toBeGreaterThan(brightness(sunEast, 4, yMid))
   })
 })
 
