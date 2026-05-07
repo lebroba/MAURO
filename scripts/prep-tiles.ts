@@ -880,9 +880,14 @@ function applyDatumOffset(int16: Int16Array): Uint16Array {
 function generateMask(heightmap: Uint16Array, body: 'earth' | 'mars' | 'moon'): Uint8Array {
   const out = new Uint8Array(heightmap.length)
   if (body === 'earth') {
-    // Earth: land where elevation >= sea level (>= DATUM_OFFSET).
+    // Earth: land where elevation > sea level. SRTM and Copernicus GLO-30
+    // both encode ocean as elevation 0 (the radar return is from the water
+    // surface), so the threshold is STRICTLY greater than sea level. The
+    // earlier `>= DATUM_OFFSET` rule treated all ocean cells as land — a
+    // 1024×1024 Norway tile rendered with ~0.05% ocean instead of the
+    // ~40% ocean visible in the source data.
     for (let i = 0; i < heightmap.length; i++) {
-      out[i] = heightmap[i]! >= DATUM_OFFSET ? 1 : 0
+      out[i] = heightmap[i]! > DATUM_OFFSET ? 1 : 0
     }
   } else {
     // Mars / Moon: no oceans. Entire surface is "land."
