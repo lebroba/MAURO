@@ -20,7 +20,7 @@ export default async function NewNationPage({ params }: PageProps) {
   if (!world) notFound()
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-7xl px-6 py-12 lg:px-12">
       <div className="label-caps mb-6 text-xs">
         <span className="bg-stamp mr-2 inline-block h-1.5 w-1.5 rounded-full align-middle" />
         MAURO &middot; {world.name as string} &middot; New nation

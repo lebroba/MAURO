@@ -3,6 +3,8 @@
 interface ChoiceOption<V extends string> {
   value: V
   label: string
+  /** One-line italic flavor displayed beneath the title in the card. */
+  description?: string
 }
 
 interface ChoiceCardGroupProps<V extends string> {
@@ -19,7 +21,7 @@ interface ChoiceCardGroupProps<V extends string> {
 const COL_CLASS: Record<2 | 3 | 4, string> = {
   2: 'grid-cols-2',
   3: 'grid-cols-2 md:grid-cols-3',
-  4: 'grid-cols-2 md:grid-cols-4',
+  4: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
 }
 
 export function ChoiceCardGroup<V extends string>({
@@ -44,15 +46,22 @@ export function ChoiceCardGroup<V extends string>({
               aria-checked={selected}
               onClick={() => onChange(opt.value)}
               className={[
-                'border px-3 py-2 text-left font-serif text-sm leading-tight transition-colors',
+                'flex flex-col gap-1.5 border px-3 py-2.5 text-left transition-colors',
                 'hover:border-verdigris',
                 selected
-                  ? 'border-stamp bg-surface text-ink'
-                  : 'border-hairline text-text',
+                  ? 'border-stamp bg-surface'
+                  : 'border-hairline',
               ].join(' ')}
               style={{ borderRadius: '2px' }}
             >
-              {opt.label}
+              <span className="font-display text-base leading-tight">
+                {opt.label}
+              </span>
+              {opt.description && (
+                <span className="text-muted font-serif text-xs italic leading-snug">
+                  {opt.description}
+                </span>
+              )}
             </button>
           )
         })}

@@ -61,25 +61,21 @@ test.describe('nation creation flow', () => {
     await page.waitForURL(/\/nations\/new$/)
     await page.getByPlaceholder(/iron duchy/i).fill('Test Republic')
 
-    // Module 1 (Sovereignty) — rendered fields: government, religion, C, D
+    // All four modules render with defaultOpen. Slider order:
+    //   M1 — C, D · M2 — M, I2 · M3 — E · M4 — I
+    // (DOM order matches lg layout: M1+M3 left column, M2+M4 right column,
+    //  but range inputs are rendered in source order.)
     await page.getByRole('radio', { name: 'Feudal Monarchy' }).click()
     await page.getByRole('radio', { name: 'The Pantheon' }).click()
     await page.locator('input[type="range"]').nth(0).fill('5')       // C
     await page.locator('input[type="range"]').nth(1).fill('5')       // D
 
-    // Module 2 (War) — open accordion first, then: civTier, M, I2
-    await page.getByRole('button', { name: /the sword/i }).click()
-    await page.getByRole('radio', { name: 'Age of Iron (Feudal-Early)' }).click()
-    await page.locator('input[type="range"]').nth(2).fill('5')       // M
-    await page.locator('input[type="range"]').nth(3).fill('5')       // I2
+    await page.getByRole('radio', { name: 'Age of Iron' }).click()
+    await page.locator('input[type="range"]').nth(2).fill('5')       // E (M3)
+    await page.locator('input[type="range"]').nth(3).fill('5')       // M (M2)
+    await page.locator('input[type="range"]').nth(4).fill('5')       // I2 (M2)
 
-    // Module 3 (Prosperity) — open accordion first, then: E, currency
-    await page.getByRole('button', { name: /the sledgehammer/i }).click()
-    await page.locator('input[type="range"]').nth(4).fill('5')       // E
-
-    // Module 4 (Environment) — open accordion first, then: I, species
-    await page.getByRole('button', { name: /the anchor/i }).click()
-    await page.locator('input[type="range"]').nth(5).fill('5')       // I
+    await page.locator('input[type="range"]').nth(5).fill('5')       // I (M4)
     await page.getByRole('radio', { name: 'Human' }).click()
 
     await page.getByRole('button', { name: /establish nation/i }).click()

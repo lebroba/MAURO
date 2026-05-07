@@ -122,10 +122,16 @@ export function InterviewClient({ worldId }: InterviewClientProps) {
         />
       </div>
 
-      <ModuleSovereignty state={interview} onChange={onChange} flashedFields={flashed} />
-      <ModuleWar state={interview} onChange={onChange} flashedFields={flashed} />
-      <ModuleProsperity state={interview} onChange={onChange} flashedFields={flashed} />
-      <ModuleEnvironment state={interview} onChange={onChange} flashedFields={flashed} />
+      <div className="grid gap-x-12 gap-y-0 lg:grid-cols-2">
+        <div>
+          <ModuleSovereignty state={interview} onChange={onChange} flashedFields={flashed} />
+          <ModuleProsperity state={interview} onChange={onChange} flashedFields={flashed} />
+        </div>
+        <div>
+          <ModuleWar state={interview} onChange={onChange} flashedFields={flashed} />
+          <ModuleEnvironment state={interview} onChange={onChange} flashedFields={flashed} />
+        </div>
+      </div>
 
       {firedRules.length > 0 && (
         <div className="bg-surface border-hairline mt-6 border p-4">
