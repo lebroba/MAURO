@@ -72,7 +72,7 @@ Two serifs, one grotesque, one mono. Display and body are both serif — deliber
 
 **Accent semantics (load-bearing — do not freelance):**
 - **Stamp red `#B8442C`:** Pinned states. The current sim-date pin on the scrubber. Unread-event dots in the ledger. Stamp-style buttons for irreversible actions ("Trigger event"). The accent dot in the eyebrow. The single italic period after "Mauro" in the hero.
-- **Verdigris `#3B6B5A`:** Live / in-flight states. The drag-position pin on the scrubber while the user is dragging. "Currently being edited" indicators on form fields and ledger entries. Active-cursor breadcrumbs in future multi-user contexts.
+- **Verdigris `#3B6B5A`:** Live / in-flight states. The drag-position pin on the scrubber while the user is dragging. "Currently being edited" indicators on form fields and ledger entries. Active-cursor breadcrumbs in future multi-user contexts. **Also: the canonical ocean fill in the hillshade renderer (`packages/geo/src/hillshade.ts`).** Nation polygon overlays must avoid this hex so they remain visible over water — both the picker palette and the legacy fallback palette exclude it.
 - **Together:** Cartographic source material — ink-red marks borders/territory; verdigris-teal marks rivers/water/coast. Two semantics, two colors, historically grounded.
 
 **Dark mode strategy:** Hand-tuned (not algorithmic invert). Reduce saturation ~10% on chromatic accents; use warm-near-black (`#161513`) instead of pure black to keep the paper feel. Hairlines drop ~3 stops in luminance to stay legible without screaming.

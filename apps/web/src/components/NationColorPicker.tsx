@@ -6,11 +6,12 @@ interface NationColorPickerProps {
 }
 
 // Cartographic-intelligence palette — desaturated heraldic colors that all
-// sit comfortably on the warm-paper hillshade. Two are MAURO brand accents
-// (stamp, verdigris); the rest are companion tones in the same value range.
+// sit comfortably on the warm-paper hillshade. Verdigris (#3B6B5A) is
+// deliberately absent: the hillshade renderer reserves it as the canonical
+// ocean fill, so a verdigris polygon would visually disappear over water.
 const SWATCHES: ReadonlyArray<{ hex: string; name: string }> = [
   { hex: '#B8442C', name: 'Stamp red' },
-  { hex: '#3B6B5A', name: 'Verdigris' },
+  { hex: '#9C3848', name: 'Crimson' },
   { hex: '#3B4D6B', name: 'Indigo' },
   { hex: '#C77E2D', name: 'Saffron' },
   { hex: '#5B3A4F', name: 'Plum' },
@@ -63,7 +64,7 @@ export function NationColorPicker({ value, onChange }: NationColorPickerProps) {
             className="h-3.5 w-3.5"
             style={{
               background:
-                'conic-gradient(from 0deg, #b8442c, #c77e2d, #7c8a66, #3b6b5a, #3b4d6b, #5b3a4f, #b8442c)',
+                'conic-gradient(from 0deg, #b8442c, #c77e2d, #7c8a66, #9c3848, #3b4d6b, #5b3a4f, #b8442c)',
               borderRadius: '2px',
             }}
           />

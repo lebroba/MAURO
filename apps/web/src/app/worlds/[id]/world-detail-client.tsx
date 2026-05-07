@@ -254,7 +254,6 @@ export function WorldDetailClient({
           {imageUrl ? (
             <MapView
               imageUrl={imageUrl}
-              oceanOverlayUrl={`/api/worlds/${world.id}/ocean-overlay`}
               coordsLabel={coordsLabel}
               tileLabel={tile.name}
               drawingNation={drawingNation}

@@ -46,8 +46,9 @@ interface EventRow {
 }
 
 // Fallback palette for legacy nations created before the color field existed.
-// Rotates by event id so adjacent nations don't collide visually.
-const LEGACY_PALETTE = ['#B8442C', '#3B6B5A', '#3B4D6B', '#C77E2D', '#5B3A4F', '#7C8A66', '#7A5A2F', '#4A4D52'] as const
+// Rotates by event id so adjacent nations don't collide visually. Verdigris
+// (#3B6B5A) is excluded — that hex is reserved as the hillshade ocean fill.
+const LEGACY_PALETTE = ['#B8442C', '#9C3848', '#3B4D6B', '#C77E2D', '#5B3A4F', '#7C8A66', '#7A5A2F', '#4A4D52'] as const
 
 const TILE_DISPLAY: Record<string, TileDisplay> = {
   'earth-patagonia': {

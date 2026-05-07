@@ -7,10 +7,12 @@
 // render-time outputs are pixel-identical for an unchanged heightmap —
 // asserted by Test #22 (prep ↔ render parity) in the eng-review test plan.
 //
-// Validated by the Day-1 spike (apps/web/src/app/api/render-spike/route.ts):
-//   - 2048×2048 grayscale heightmap → ~200ms compute on Vercel x86 Node 24
-//   - Output is plausible visually (verified via ?image=1 query mode)
+// Validated by a Day-1 spike (since retired):
+//   - 2048×2048 heightmap → ~200ms compute on Vercel x86 Node 24
 //   - Memory peak ~130MB, well under Vercel Hobby's 1GB ceiling
+// Both numbers were measured against the grayscale prototype; the colored
+// per-pixel ramp adds ~3 multiplies and one ramp lookup per land cell —
+// arithmetic, well within the same envelope.
 //
 // Algorithm:
 //   1. Pre-pass: find min/max elevation among land pixels for normalization.
