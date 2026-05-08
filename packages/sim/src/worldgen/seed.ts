@@ -38,10 +38,15 @@ export function encodeSeedHex(state: readonly [bigint, bigint, bigint, bigint]):
   return state.map((s) => (s & MASK_64).toString(16).padStart(16, '0')).join('')
 }
 
-/** Parse a 64-character hex string back into 4 × u64. */
+/**
+ * Parse a 64-character hex string back into 4 × u64.
+ *
+ * Canonical form is lowercase. Uppercase input will be rejected to prevent
+ * subtle "same seed compares unequal" bugs at the storage boundary.
+ */
 export function parseSeedHex(hex: string): [bigint, bigint, bigint, bigint] {
-  if (!/^[0-9a-f]+$/i.test(hex)) {
-    throw new Error('parseSeedHex: input must be hex (0-9, a-f)')
+  if (!/^[0-9a-f]+$/.test(hex)) {
+    throw new Error('parseSeedHex: input must be hex (0-9, a-f), lowercase')
   }
   if (hex.length !== 64) {
     throw new Error(`parseSeedHex: input must be 64 hex chars (got ${hex.length})`)

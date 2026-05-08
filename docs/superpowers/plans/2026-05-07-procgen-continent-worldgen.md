@@ -347,7 +347,7 @@ describe('seed — hex round-trip', () => {
 
   it('round-trips encode → parse', () => {
     const original: [bigint, bigint, bigint, bigint] = [
-      0xdeadbeefcafebabe1234567890abcdefn,
+      0xdeadbeefcafebafen,
       0x1n,
       0xffffffffffffffffn,
       0x9e3779b97f4a7c15n,

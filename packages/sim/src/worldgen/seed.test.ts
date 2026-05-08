@@ -2,6 +2,19 @@ import { describe, expect, it } from 'vitest'
 import { mixSeedString, encodeSeedHex, parseSeedHex } from './seed'
 
 describe('seed — string mixing', () => {
+  it('produces a stable pinned vector for "mauro" (CLAUDE.md determinism contract)', () => {
+    // Pinned to the FNV-1a + splitmix64 derivation circa commit 42c0ec6.
+    // Future refactors that change the algorithm MUST update this vector
+    // intentionally — silently changing it breaks reproducibility of every
+    // procgen world ever generated from this seed string.
+    expect(mixSeedString('mauro')).toEqual([
+      0x8a73698f1616f89fn,
+      0x26320fd03417da0n,
+      0x4b1b89c7c241409dn,
+      0x52609b0c576e4a5an,
+    ])
+  })
+
   it('produces 4 × u64 (BigInt) state from any string', () => {
     const state = mixSeedString('hello')
     expect(state).toHaveLength(4)
