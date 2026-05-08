@@ -53,3 +53,6 @@ scripts/stitch-poc/.venv/
 # Git worktrees — isolated dev branches, never tracked
 .worktrees/
 
+
+# Superpowers brainstorming companion
+.superpowers/

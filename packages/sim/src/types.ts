@@ -168,7 +168,6 @@ export type WorldEvent =
   | WorldCreatedEvent
   | GeographyMutationEvent
   | NationCreatedEvent
-  | WorldGeneratedEvent
 export type WorldEventKind = WorldEvent['kind']
 
 /** Database row as returned by Supabase (matches `events` table schema). */
