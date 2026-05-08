@@ -1,4 +1,5 @@
 import type { Xoshiro256 } from '../rng/xoshiro256'
+import { createNoise2D } from 'simplex-noise'
 
 /** Top 53 bits → [0, 1). */
 function nextDouble(rng: Xoshiro256): number {
@@ -6,27 +7,38 @@ function nextDouble(rng: Xoshiro256): number {
   return top53 / 2 ** 53
 }
 
-/** Gaussian via Box-Muller. */
-function nextGaussian(rng: Xoshiro256): number {
-  let u = 0
-  let v = 0
-  while (u === 0) u = nextDouble(rng)
-  while (v === 0) v = nextDouble(rng)
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
+/** Multi-octave noise: sum of N octaves with halving amplitude / doubling frequency.
+ *  Output range is roughly [-1, 1] after normalization. */
+function fbm(noise2D: (x: number, y: number) => number, x: number, y: number, octaves: number): number {
+  let amp = 1
+  let freq = 1
+  let sum = 0
+  let weight = 0
+  for (let i = 0; i < octaves; i++) {
+    sum += amp * noise2D(x * freq, y * freq)
+    weight += amp
+    amp *= 0.5
+    freq *= 2
+  }
+  return sum / weight
 }
 
 /**
- * Fractalize a closed polygon ring via Brownian-bridge midpoint refinement.
+ * Fractalize a closed polygon ring via recursive midpoint subdivision with
+ * multi-octave simplex noise displacement.
  *
  * Each segment is recursively subdivided. At each step, the new midpoint is
- * the geometric midpoint plus a perpendicular displacement drawn from a
- * Gaussian whose variance scales with segment length × (2 - fractalDimension).
+ * the geometric midpoint plus a perpendicular displacement sampled from a
+ * multi-octave noise field (4 octaves) at that midpoint's spatial coordinates.
+ * A separate noise field domain-warps the midpoint's coordinates before the
+ * displacement lookup, creating swirling fractal-like distortions.
  *
  * - fractalDimension = 1.0 → straight lines (no displacement)
- * - fractalDimension = 1.5 → highly fractal (large displacements)
+ * - fractalDimension = 1.5 → moderately wiggly
+ * - fractalDimension = 1.8 → highly fractal coast
  *
  * `subdivisions` is the recursion depth; each level doubles the vertex count
- * per segment. 3 levels → 8× vertices per segment; 4 levels → 16×.
+ * per segment.
  *
  * Input ring must be closed (first vertex repeated as last).
  */
@@ -39,9 +51,13 @@ export function brownianBridgeRing(
   if (subdivisions === 0) {
     return ring.map((p) => [p[0], p[1]] as [number, number])
   }
-  // Roughness factor: 1 = fully variable, 0 = no displacement.
-  // For D in [1, 2), D - 1 ∈ [0, 1). Higher D → more wiggly.
-  const roughness = Math.max(0, Math.min(1, fractalDimension - 1))
+  // Roughness: 0 (straight) to 1+ (very wiggly). 1.5 → 0.5; 1.8 → 0.8.
+  const roughness = Math.max(0, Math.min(1.5, fractalDimension - 1))
+
+  // Two independent noise fields: one for displacement, one for domain warp.
+  // Both seeded from the same RNG to preserve determinism.
+  const dispNoise = createNoise2D(() => nextDouble(rng))
+  const warpNoise = createNoise2D(() => nextDouble(rng))
 
   const refineOnce = (
     inputRing: ReadonlyArray<readonly [number, number]>,
@@ -51,18 +67,29 @@ export function brownianBridgeRing(
       const a = inputRing[i]!
       const b = inputRing[i + 1]!
       out.push([a[0], a[1]])
-      const mx = (a[0] + b[0]) / 2
-      const my = (a[1] + b[1]) / 2
+      let mx = (a[0] + b[0]) / 2
+      let my = (a[1] + b[1]) / 2
+      // Domain warp: distort the lookup coordinate by another noise field.
+      // Scale 0.05 keeps warp gentle relative to typical lon/lat extents.
+      const warpX = fbm(warpNoise, mx * 0.05, my * 0.05, 2)
+      const warpY = fbm(warpNoise, mx * 0.05 + 100, my * 0.05 + 100, 2)
+      const warpScale = 2.0
+      mx += warpX * warpScale
+      my += warpY * warpScale
       // Perpendicular vector (rotate (b - a) by 90°).
       const dx = b[0] - a[0]
       const dy = b[1] - a[1]
       const segLen = Math.hypot(dx, dy)
       const px = -dy / Math.max(segLen, 1e-9)
       const py = dx / Math.max(segLen, 1e-9)
-      // Displacement variance ~ (segLen × roughness) / 10. Conservative scaling
-      // preserves centroid while adding fractal detail.
-      const displacement = nextGaussian(rng) * (segLen * roughness * 0.1)
-      out.push([mx + px * displacement, my + py * displacement])
+      // Multi-octave noise displacement, scaled by segment length and roughness.
+      const noiseValue = fbm(dispNoise, mx * 0.1, my * 0.1, 4)
+      const displacement = noiseValue * (segLen * roughness * 0.25)
+      // Use the original (un-warped) midpoint as the anchor; warp only affects
+      // where we sample noise.
+      const anchorX = (a[0] + b[0]) / 2
+      const anchorY = (a[1] + b[1]) / 2
+      out.push([anchorX + px * displacement, anchorY + py * displacement])
     }
     // Close the ring.
     out.push([out[0]![0], out[0]![1]])

@@ -49,7 +49,7 @@ describe('earth-stats — values are sane defaults', () => {
   it('COASTLINE_COMPLEXITY_RANGE is [smoothMin, fractalMax]', () => {
     const [lo, hi] = COASTLINE_COMPLEXITY_RANGE
     expect(lo).toBeGreaterThanOrEqual(1.0)
-    expect(hi).toBeLessThanOrEqual(1.6)
+    expect(hi).toBeLessThanOrEqual(2.0)
     expect(lo).toBeLessThan(hi)
   })
 })

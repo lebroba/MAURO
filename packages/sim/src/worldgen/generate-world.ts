@@ -156,7 +156,7 @@ export function generateWorld(seedString: string): WorldGeneratedPayload {
   const [dLo, dHi] = COASTLINE_COMPLEXITY_RANGE
   const fractalized = shrunkCells.map((ring) => {
     const D = dLo + nextDouble(fractRng) * (dHi - dLo)
-    return brownianBridgeRing(fractRng, ring, D, 3)
+    return brownianBridgeRing(fractRng, ring, D, 4)
   })
 
   // 6. Name + color per continent.

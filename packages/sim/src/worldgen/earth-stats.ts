@@ -41,5 +41,5 @@ export const LATITUDINAL_WEIGHTING: ReadonlyArray<number> = [
 export const SIZE_DISTRIBUTION_ALPHA = 1.4
 
 /** Per-continent fractal dimension D for coastline complexity.
- *  1.05 = smooth (Africa-style); 1.5 = highly fractal (Norway fjords). */
-export const COASTLINE_COMPLEXITY_RANGE: readonly [number, number] = [1.05, 1.5]
+ *  1.3 = mildly wiggly; 1.8 = very fractal (Norway-fjord style). */
+export const COASTLINE_COMPLEXITY_RANGE: readonly [number, number] = [1.3, 1.8]
