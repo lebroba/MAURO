@@ -12,7 +12,7 @@ import {
 } from './earth-stats'
 import { mixSeedString, encodeSeedHex } from './seed'
 import { biasLatitudeNorth } from './bias'
-import { sphericalVoronoi } from './voronoi'
+import { sphericalVoronoi, cellCentroids } from './voronoi'
 import { allocateLandShares } from './pareto'
 import { brownianBridgeRing } from './fractalize'
 import { generatePlaceholderName, pickContinentColor } from './naming'
@@ -51,6 +51,24 @@ function shrinkRingTowardCentroid(
   cx /= n
   cy /= n
   return ring.map(([x, y]) => [cx + (x - cx) * shrinkFactor, cy + (y - cy) * shrinkFactor] as [number, number])
+}
+
+/**
+ * Lloyd Relaxation: iteratively move each seed to the centroid of its cell.
+ * After ~3 iterations, seed points are uniformly distributed (blue noise),
+ * producing more even-sized continents and more regular cell shapes
+ * (fewer pathological slivers). Per `docs/Creating SVG Continent Shapes.md`.
+ *
+ * Uses the lightweight cellCentroids path (skips K-NN boundary extraction)
+ * since each Lloyd iteration only needs centroids — boundaries are wasted
+ * work as we re-tessellate next iteration.
+ */
+function relaxSeeds(seeds: LonLat[], iterations: number): LonLat[] {
+  let current = seeds
+  for (let iter = 0; iter < iterations; iter++) {
+    current = cellCentroids(current)
+  }
+  return current
 }
 
 /** Approximate (lon, lat) polygon area in deg² (planar approximation —
@@ -105,8 +123,19 @@ export function generateWorld(seedString: string): WorldGeneratedPayload {
     })
   }
 
-  // 3. Voronoi tessellation — one polygon per seed.
-  const cells = sphericalVoronoi(seedPoints)
+  // 3. Lloyd Relaxation: 3 iterations for blue-noise distribution before
+  // the final Voronoi tessellation. Produces more even-sized continents.
+  // Lloyd uniformizes globally; we re-apply the N-hemisphere bias afterward
+  // so blue-noise spacing is preserved while seeds keep the Earth-derived
+  // northern skew.
+  const biasRng = stage(0x250n)
+  const relaxedSeeds = relaxSeeds(seedPoints, 3).map((s) => ({
+    lonDeg: s.lonDeg,
+    latDeg: biasLatitudeNorth(biasRng, s.latDeg, HEMISPHERIC_BIAS_NORTH),
+  }))
+
+  // Voronoi tessellation — one polygon per seed.
+  const cells = sphericalVoronoi(relaxedSeeds)
 
   // 4. Allocate land shares; shrink each cell inward to target area.
   const sizeRng = stage(0x300n)
