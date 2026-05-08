@@ -58,6 +58,12 @@ export function applyEvent(
       // keys remain valid.
       return state
 
+    case 'WorldGenerated':
+      // No-op on substrate. WorldGenerated carries continent metadata only;
+      // heightmap and mask are not touched. Task 10 adds the regression test
+      // asserting substrate-hash invariance for this event.
+      return state
+
     default: {
       // Exhaustive check — adding a new event kind without a case here
       // produces a compile error here, not a runtime surprise.
