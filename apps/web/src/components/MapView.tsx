@@ -35,6 +35,14 @@ interface MapViewProps {
     color: string
     polygon: { type: 'Polygon'; coordinates: Array<Array<[number, number]>> }
   }>
+  /** Continents to render as filled polygons + outlines. Procgen worlds. */
+  continents?: ReadonlyArray<{
+    id: string
+    color: string
+    polygon: { type: 'Polygon'; coordinates: Array<Array<[number, number]>> }
+  }>
+  /** When true, skip the hillshade source layer and use verdigris bg. */
+  isProcgen?: boolean
   /** Color used for the in-progress draw + the pending polygon overlay. */
   drawColor?: string
 }
@@ -53,6 +61,8 @@ export function MapView({
   onPolygonClose,
   pendingPolygon,
   savedNations,
+  continents = [],
+  isProcgen = false,
   drawColor = '#B8442C',
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -61,6 +71,10 @@ export function MapView({
   // the current value, not the initial closure capture.
   const imageUrlRef = useRef(imageUrl)
   imageUrlRef.current = imageUrl
+  // Same trick for isProcgen — the map-init effect runs once on mount and
+  // its load callback closes over the initial value otherwise.
+  const isProcgenRef = useRef(isProcgen)
+  isProcgenRef.current = isProcgen
 
   // Map init — runs ONCE on mount. Previously this had [imageUrl] deps,
   // which caused the entire map to be destroyed + recreated whenever the
@@ -83,7 +97,9 @@ export function MapView({
           {
             id: 'bg',
             type: 'background',
-            paint: { 'background-color': '#1a1816' },
+            paint: {
+              'background-color': isProcgenRef.current ? '#3B6B5A' : '#1a1816',
+            },
           },
         ],
         // glyphs intentionally omitted — we don't render any text labels.
@@ -100,22 +116,26 @@ export function MapView({
     mapRef.current = map
 
     map.on('load', () => {
-      map.addSource('hillshade', {
-        type: 'image',
-        url: imageUrlRef.current,
-        coordinates: [
-          [-180, 85.05],
-          [180, 85.05],
-          [180, -85.05],
-          [-180, -85.05],
-        ],
-      })
-      map.addLayer({
-        id: 'hillshade-layer',
-        type: 'raster',
-        source: 'hillshade',
-        paint: { 'raster-opacity': 1 },
-      })
+      // Procgen worlds have no hillshade — the verdigris bg layer IS the
+      // ocean, and continents render as fill polygons over it.
+      if (!isProcgenRef.current) {
+        map.addSource('hillshade', {
+          type: 'image',
+          url: imageUrlRef.current,
+          coordinates: [
+            [-180, 85.05],
+            [180, 85.05],
+            [180, -85.05],
+            [-180, -85.05],
+          ],
+        })
+        map.addLayer({
+          id: 'hillshade-layer',
+          type: 'raster',
+          source: 'hillshade',
+          paint: { 'raster-opacity': 1 },
+        })
+      }
       // Fit the view to the image bounds on first load.
       map.fitBounds(
         [
@@ -134,6 +154,7 @@ export function MapView({
 
   // Update the image source if the URL changes (scrubber-driven swap).
   useEffect(() => {
+    if (isProcgen) return
     const map = mapRef.current
     if (!map) return
     const apply = () => {
@@ -142,7 +163,7 @@ export function MapView({
     }
     if (map.isStyleLoaded()) apply()
     else map.once('load', apply)
-  }, [imageUrl])
+  }, [imageUrl, isProcgen])
 
   // Freehand polygon-draw mode.
   // Uses MapLibre's raw mouse event API instead of @maplibre/maplibre-gl-draw
@@ -430,6 +451,90 @@ export function MapView({
       teardown()
     }
   }, [savedNations])
+
+  // Persistent render of procgen continents. Mirrors saved-nations effect but
+  // uses higher opacity (these are landmasses, not territory overlays) and a
+  // thinner border. Source carries one feature per continent with its color
+  // baked into properties for data-driven styling.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const sourceId = '__continents__'
+    const fillLayerId = '__continents_fill__'
+    const lineLayerId = '__continents_line__'
+
+    const teardown = () => {
+      const m = mapRef.current
+      if (!m || !(m as unknown as { style?: unknown }).style) return
+      try {
+        if (m.getLayer(lineLayerId)) m.removeLayer(lineLayerId)
+        if (m.getLayer(fillLayerId)) m.removeLayer(fillLayerId)
+        if (m.getSource(sourceId)) m.removeSource(sourceId)
+      } catch {
+        // map removed or style not yet ready
+      }
+    }
+
+    if (!continents || continents.length === 0) {
+      teardown()
+      return
+    }
+
+    const featureCollection = {
+      type: 'FeatureCollection' as const,
+      features: continents.map((c) => ({
+        type: 'Feature' as const,
+        geometry: c.polygon,
+        properties: { id: c.id, color: c.color },
+      })),
+    }
+
+    let cancelled = false
+    const paint = () => {
+      if (cancelled) return
+      const m = mapRef.current
+      if (!m || !(m as unknown as { style?: unknown }).style) return
+      try {
+        const existing = m.getSource(sourceId) as maplibregl.GeoJSONSource | undefined
+        if (existing) {
+          existing.setData(featureCollection)
+          return
+        }
+        m.addSource(sourceId, { type: 'geojson', data: featureCollection })
+        m.addLayer({
+          id: fillLayerId,
+          type: 'fill',
+          source: sourceId,
+          paint: {
+            'fill-color': ['get', 'color'],
+            'fill-opacity': 0.85,
+          },
+        })
+        m.addLayer({
+          id: lineLayerId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': 1,
+          },
+        })
+      } catch {
+        // map removed mid-paint
+      }
+    }
+
+    if (map.isStyleLoaded()) {
+      paint()
+    } else {
+      map.once('load', paint)
+    }
+
+    return () => {
+      cancelled = true
+      teardown()
+    }
+  }, [continents])
 
   return (
     <div className="relative h-full w-full">

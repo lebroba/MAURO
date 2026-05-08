@@ -63,9 +63,6 @@ export function WorldDetailClient({
   isProcgen,
   continents,
 }: WorldDetailClientProps) {
-  // TODO Task 15: pass continents={continents} isProcgen={isProcgen} to MapView
-  void isProcgen
-  void continents
   const router = useRouter()
   // Default to the latest snapshot. Scrubber pin sits on T+max.
   const [selectedIndex, setSelectedIndex] = useState(
@@ -228,15 +225,17 @@ export function WorldDetailClient({
 
         {/* MAP -------------------------------------------------------- */}
         <main className="border-hairline relative min-h-[400px] border-r border-l">
-          {imageUrl ? (
+          {imageUrl || isProcgen ? (
             <MapView
-              imageUrl={imageUrl}
+              imageUrl={imageUrl ?? ''}
               coordsLabel={coordsLabel}
               tileLabel={tile.name}
               drawingNation={drawingNation}
               onPolygonClose={onPolygonClose}
               pendingPolygon={pendingPolygon}
               savedNations={savedNations}
+              continents={continents}
+              isProcgen={isProcgen}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-8">
