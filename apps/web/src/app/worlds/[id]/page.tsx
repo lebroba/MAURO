@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { worldQueryForServiceRole } from '@mauro/sim/server'
-import type { GeoJSONPolygon, InterviewState } from '@mauro/sim'
+import type { Continent, GeoJSONPolygon, InterviewState } from '@mauro/sim'
 import {
   WorldDetailClient,
   type EventDisplay,
@@ -23,7 +23,8 @@ interface PageProps {
 interface WorldRow {
   id: string
   name: string
-  tile_slug: string
+  tile_slug: string | null
+  procgen_seed: string | null
   magic_level: string
   master_seed: string
   created_at: string
@@ -41,6 +42,8 @@ interface EventRow {
         color?: string
         polygon?: GeoJSONPolygon
         interview?: InterviewState
+        seed?: string
+        continents?: Continent[]
       }
     | null
 }
@@ -90,7 +93,7 @@ export default async function WorldDetailPage({ params }: PageProps) {
   const { data: world, error: worldErr } = await supabase
     .from('worlds')
     .select(
-      'id, name, tile_slug, magic_level, master_seed, created_at, latest_event_at',
+      'id, name, tile_slug, procgen_seed, magic_level, master_seed, created_at, latest_event_at',
     )
     .eq('id', id)
     .maybeSingle()
@@ -121,11 +124,15 @@ export default async function WorldDetailPage({ params }: PageProps) {
       interview: e.payload?.interview as InterviewState,
     }))
 
-  const tile = TILE_DISPLAY[w.tile_slug] ?? {
-    name: w.tile_slug,
+  const tile = TILE_DISPLAY[w.tile_slug ?? ''] ?? {
+    name: w.tile_slug ?? '',
     body: '',
     coords: '',
   }
+
+  const continentEvent = eventList.find((e) => e.kind === 'WorldGenerated')
+  const continents: Continent[] = (continentEvent?.payload?.continents ?? []) as Continent[]
+  const isProcgen = w.procgen_seed !== null
 
   // Compute one snapshot per event boundary. Service-role replay is fine —
   // we already verified ownership of this world via the user-scoped SELECT.
@@ -170,7 +177,7 @@ export default async function WorldDetailPage({ params }: PageProps) {
       world={{
         id: w.id,
         name: w.name,
-        tileSlug: w.tile_slug,
+        tileSlug: w.tile_slug ?? '',
         magicLevel: w.magic_level,
         masterSeed: w.master_seed,
       }}
@@ -180,6 +187,8 @@ export default async function WorldDetailPage({ params }: PageProps) {
       topLedgerDate={topLedgerDate}
       topLedgerTNow={topLedgerTNow}
       nations={nationDisplays}
+      isProcgen={isProcgen}
+      continents={continents}
     />
   )
 }

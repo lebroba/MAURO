@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { MapView } from '@/components/MapView'
 import { Scrubber, type ScrubberStop } from '@/components/Scrubber'
-import type { AuditOutput, GeoJSONPolygon } from '@mauro/sim'
+import type { AuditOutput, Continent, GeoJSONPolygon } from '@mauro/sim'
 import { AuditDisplay } from './audit-display'
 import { Factbook, type NationDisplay } from '@/components/Factbook'
 
@@ -48,6 +48,8 @@ interface WorldDetailClientProps {
   topLedgerDate: string
   topLedgerTNow: string
   nations: NationDisplay[]
+  isProcgen: boolean
+  continents: Continent[]
 }
 
 export function WorldDetailClient({
@@ -58,7 +60,12 @@ export function WorldDetailClient({
   topLedgerDate,
   topLedgerTNow,
   nations,
+  isProcgen,
+  continents,
 }: WorldDetailClientProps) {
+  // TODO Task 15: pass continents={continents} isProcgen={isProcgen} to MapView
+  void isProcgen
+  void continents
   const router = useRouter()
   // Default to the latest snapshot. Scrubber pin sits on T+max.
   const [selectedIndex, setSelectedIndex] = useState(
