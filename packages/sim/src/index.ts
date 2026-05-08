@@ -21,4 +21,6 @@ export { auditPolygon, ELEVATION_THRESHOLDS } from './nation/audit'
 
 export { renderFactbook, type Factbook } from './nation/factbook'
 
+export { generateWorld } from './worldgen'
+
 export const PACKAGE_NAME = '@mauro/sim'
