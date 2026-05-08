@@ -95,6 +95,12 @@ function SignedIn({ email, worlds }: { email: string; worlds: WorldRow[] }) {
         >
           {worlds.length > 0 ? 'Create another world' : 'Begin your first world'}
         </Link>
+        <Link
+          href="/worlds/new-procgen"
+          className="border-hairline text-ink hover:border-ink font-sans inline-block border px-8 py-3.5 text-sm font-semibold uppercase tracking-wider transition-colors"
+        >
+          New procgen world
+        </Link>
         <form action="/auth/sign-out" method="post">
           <button
             type="submit"
