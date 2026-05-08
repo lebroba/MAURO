@@ -7,6 +7,7 @@ import type {
   SubstrateState,
   TileMetadata,
   WorldCreatedEvent,
+  WorldGeneratedEvent,
 } from '../types'
 
 // ----------------------------------------------------------------------------
@@ -464,5 +465,35 @@ describe('applyEvent — NationCreated', () => {
     const result = applyEvent(state, TILE_META, event, rng)
     // Implementation may return same reference or a new object with same bytes.
     expect(result.width).toBe(state.width)
+  })
+})
+
+// ============================================================================
+// applyEvent — WorldGenerated (substrate-unchanged invariant)
+// ============================================================================
+
+describe('applyEvent — WorldGenerated', () => {
+  it('REGRESSION: WorldGenerated does NOT mutate substrate state', () => {
+    const state = makeState()
+    const heightmapBefore = new Uint16Array(state.heightmap) // copy
+    const maskBefore = new Uint8Array(state.mask) // copy
+    const rng = xoshiro256ss(42n)
+
+    const event: WorldGeneratedEvent = {
+      kind: 'WorldGenerated',
+      atDate: '0000-01-01',
+      payload: {
+        seed: '00'.repeat(32), // 64-char hex (4 × u64)
+        continents: [],
+      },
+    }
+
+    const result = applyEvent(state, TILE_META, event, rng)
+
+    // Substrate hash invariant: heightmap and mask must be byte-identical.
+    expect(result.heightmap).toEqual(heightmapBefore)
+    expect(result.mask).toEqual(maskBefore)
+    expect(result.width).toBe(state.width)
+    expect(result.height).toBe(state.height)
   })
 })
