@@ -46,6 +46,55 @@ function nearestSeed(p: LonLat, seeds: LonLat[]): number {
 }
 
 /**
+ * 2D convex hull via Andrew's monotone chain (O(n log n)). Returns the hull
+ * vertices in counter-clockwise order. Input may have duplicates; output
+ * has none.
+ */
+function convexHull2D(points: Array<[number, number]>): Array<[number, number]> {
+  // Sort lexicographically by x (then y).
+  const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1])
+  const n = sorted.length
+  if (n < 2) return sorted
+
+  // Cross product of vectors OA and OB. Positive = counter-clockwise turn.
+  const cross = (
+    o: [number, number],
+    a: [number, number],
+    b: [number, number],
+  ): number => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+  // Build lower hull.
+  const lower: Array<[number, number]> = []
+  for (const p of sorted) {
+    while (
+      lower.length >= 2 &&
+      cross(lower[lower.length - 2]!, lower[lower.length - 1]!, p) <= 0
+    ) {
+      lower.pop()
+    }
+    lower.push(p)
+  }
+
+  // Build upper hull.
+  const upper: Array<[number, number]> = []
+  for (let i = n - 1; i >= 0; i--) {
+    const p = sorted[i]!
+    while (
+      upper.length >= 2 &&
+      cross(upper[upper.length - 2]!, upper[upper.length - 1]!, p) <= 0
+    ) {
+      upper.pop()
+    }
+    upper.push(p)
+  }
+
+  // Concatenate; drop the last point of each because it's the start of the other.
+  lower.pop()
+  upper.pop()
+  return [...lower, ...upper]
+}
+
+/**
  * Compute Voronoi cells on the unit sphere for N seed points.
  *
  * Returns one closed polygon per seed (in input order). Polygon coordinates
@@ -53,8 +102,8 @@ function nearestSeed(p: LonLat, seeds: LonLat[]): number {
  *
  * Algorithm: brute-force via dense Fibonacci-spiral test points. For each
  * test point, find its nearest seed → labels every test point with a cell id.
- * For each cell, extract the labeled test points, sort them around the seed
- * by bearing, and return as a polygon ring.
+ * For each cell, take the 2D convex hull of the labeled (lon, lat) points
+ * and return as a polygon ring.
  *
  * Trade-off: boundaries are coarse (~3° resolution) — the fractalization
  * pass smooths and adds detail. For N ≤ 16 seeds this is sub-millisecond.
@@ -70,35 +119,33 @@ export function sphericalVoronoi(seeds: LonLat[]): GeoJSONPolygon[] {
   // Step 2: label every test point with its nearest-seed index.
   const labels = testPoints.map((p) => nearestSeed(p, seeds))
 
-  // Step 3: per cell, gather labeled test points and sort by bearing from seed.
+  // Step 3: per cell, gather labeled test points and compute their 2D convex
+  // hull. The hull is a clean, non-self-intersecting approximation of the cell
+  // boundary. (Bearing-sort would zig-zag through interior points, producing
+  // a self-intersecting star pattern that necessitated this rewrite.)
   const result: GeoJSONPolygon[] = []
   for (let cellId = 0; cellId < seeds.length; cellId++) {
-    const cellPoints: Array<{ lonDeg: number; latDeg: number; bearing: number }> = []
     const seed = seeds[cellId]!
+    const cellPoints: Array<[number, number]> = []
     for (let i = 0; i < testPoints.length; i++) {
       if (labels[i] !== cellId) continue
       const p = testPoints[i]!
-      // Antimeridian unwrap: shift the test-point lon by ±360 if the seed is
-      // closer that way. Keeps each cell's vertices contiguous in lon,lat
-      // space (otherwise a cell straddling lon=±180 has half its vertices at
-      // +180 and half at -180, breaking centroid- and bearing-based reasoning).
-      let pLon = p.lonDeg
-      const rawDLon = pLon - seed.lonDeg
-      if (rawDLon > 180) pLon -= 360
-      else if (rawDLon < -180) pLon += 360
-      // Bearing from seed to p (radians). Naive 2D approximation OK at this
-      // resolution — boundaries are coarse and refined in fractalization.
-      const dLon = pLon - seed.lonDeg
-      const dLat = p.latDeg - seed.latDeg
-      const bearing = Math.atan2(dLat, dLon)
-      cellPoints.push({ lonDeg: pLon, latDeg: p.latDeg, bearing })
+      // Antimeridian unwrap: if seed is near +180 and point is near -180
+      // (or vice versa), shift the point so cell is contiguous in (lon, lat).
+      let lon = p.lonDeg
+      const dLon = lon - seed.lonDeg
+      if (dLon > 180) lon -= 360
+      else if (dLon < -180) lon += 360
+      cellPoints.push([lon, p.latDeg])
     }
-    cellPoints.sort((a, b) => a.bearing - b.bearing)
-    const ring: Array<[number, number]> = cellPoints.map((c) => [c.lonDeg, c.latDeg])
-    if (ring.length > 0) {
-      ring.push([ring[0]![0], ring[0]![1]]) // close the ring
+    if (cellPoints.length < 3) {
+      result.push({ type: 'Polygon', coordinates: [[]] })
+      continue
     }
-    result.push({ type: 'Polygon', coordinates: [ring] })
+    const hull = convexHull2D(cellPoints)
+    // Close the ring.
+    hull.push([hull[0]![0], hull[0]![1]])
+    result.push({ type: 'Polygon', coordinates: [hull] })
   }
   return result
 }
