@@ -58,6 +58,12 @@ export function applyEvent(
       // keys remain valid.
       return state
 
+    case 'WorldGenerated':
+      // No-op on substrate. WorldGenerated establishes the procgen continents
+      // (read-projected outside this reducer) but does NOT mutate heightmap/mask.
+      // The substrate hash invariant must hold across this event.
+      return state
+
     default: {
       // Exhaustive check — adding a new event kind without a case here
       // produces a compile error here, not a runtime surprise.

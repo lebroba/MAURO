@@ -102,6 +102,29 @@ export interface GeoJSONPolygon {
   coordinates: Array<Array<[number, number]>>
 }
 
+/**
+ * A procgen continent — an entity that lives on a procgen-kind world.
+ * Polygon is a closed ring on the sphere in (lon, lat) order. Interior
+ * coordinates are kept simple — a single outer ring, no holes — for v1.
+ */
+export interface Continent {
+  /** uuid v4, generated deterministically from the world seed. */
+  id: string
+  /** Placeholder generative name, e.g. "Continent Theta". */
+  name: string
+  /** Hex color used for both fill and (darker variant) stroke. */
+  color: string
+  /** Closed ring on the sphere; first vertex repeated as last. */
+  polygon: GeoJSONPolygon
+}
+
+export interface WorldGeneratedPayload {
+  /** Hex-encoded master seed (4 × u64) used to produce the continents. */
+  seed: string
+  /** Continents pinned at world-creation time — see determinism spec §determinism. */
+  continents: Continent[]
+}
+
 export type GovernmentKey =
   | 'anarchic' | 'feudal' | 'magocracy' | 'theocracy' | 'totalitarian'
 
@@ -135,10 +158,17 @@ export interface NationCreatedEvent {
   }
 }
 
+export interface WorldGeneratedEvent {
+  kind: 'WorldGenerated'
+  atDate: string
+  payload: WorldGeneratedPayload
+}
+
 export type WorldEvent =
   | WorldCreatedEvent
   | GeographyMutationEvent
   | NationCreatedEvent
+  | WorldGeneratedEvent
 export type WorldEventKind = WorldEvent['kind']
 
 /** Database row as returned by Supabase (matches `events` table schema). */
