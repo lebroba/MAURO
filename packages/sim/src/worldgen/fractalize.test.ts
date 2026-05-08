@@ -22,13 +22,14 @@ describe('brownianBridgeRing', () => {
     expect(last[1]).toBeCloseTo(first[1], 9)
   })
 
-  it('produces 2^subdivisions × original segments', () => {
+  it('produces 2^subdivisions × 2 (Chaikin) × original segments', () => {
     const [s0, s1, s2, s3] = mixSeedString('test')
     const rng = xoshiro256ssFromState(s0, s1, s2, s3)
     const original = square.length - 1 // 4 segments
     const out = brownianBridgeRing(rng, square, 1.2, 3)
-    // After 3 subdivisions, each segment becomes 8 segments → 32 total + closing = 33
-    expect(out.length).toBe(original * Math.pow(2, 3) + 1)
+    // After 3 subdivisions, each segment is 8 sub-segments → 32 total.
+    // Then Chaikin doubles vertex count → 64 segments + closing duplicate.
+    expect(out.length).toBe(original * Math.pow(2, 3) * 2 + 1)
   })
 
   it('output ring still encloses the original (centroid preserved)', () => {
